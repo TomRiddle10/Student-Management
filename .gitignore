@@ -30,5 +30,4 @@ application-local.yml
 tmp/
 temp/
 
-.env
-.env.*
+src/main/resources/application-local.yaml

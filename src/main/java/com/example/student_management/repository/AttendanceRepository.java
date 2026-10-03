@@ -1,6 +1,7 @@
 package com.example.student_management.repository;
 
 import com.example.student_management.entity.Attendance;
+import com.example.student_management.entity.AttendanceStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
@@ -29,11 +30,17 @@ public interface AttendanceRepository
     long countByStudentIdAndCourseIdAndStatus(
             Long studentId,
             Long courseId,
-            com.example.student_management.entity.AttendanceStatus status
+            AttendanceStatus status
     );
 
     long countByStudentIdAndCourseId(
             Long studentId,
             Long courseId
+    );
+
+    List<Attendance> findByCourseIdAndAttendanceDateBetween(
+            Long courseId,
+            LocalDate startDate,
+            LocalDate endDate
     );
 }

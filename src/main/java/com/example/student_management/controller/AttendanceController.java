@@ -9,7 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -41,6 +43,19 @@ public class AttendanceController {
         attendanceService.saveAttendance(courseId, request);
 
         return ResponseEntity.ok("Attendance saved successfully");
+    }
+
+    // Get attendance history for a month
+    @GetMapping("/courses/{courseId}/attendance/history")
+    public ResponseEntity<Map<LocalDate, Long>> getAttendanceHistory(
+            @PathVariable Long courseId,
+            @RequestParam String month) {
+
+        YearMonth yearMonth = YearMonth.parse(month);
+
+        return ResponseEntity.ok(
+                attendanceService.getAttendanceHistory(courseId, yearMonth)
+        );
     }
 
     // Get attendance summary of a student for a course

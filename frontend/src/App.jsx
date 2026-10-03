@@ -11,11 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Students from "./pages/Students";
 import StudentDetails from "./pages/StudentDetails";
 import Attendance from "./pages/Attendance";
-
-// Temporary Courses page
-function Courses() {
-  return <h1>Courses</h1>;
-}
+import Courses from "./pages/Courses";
 
 function App() {
   return (

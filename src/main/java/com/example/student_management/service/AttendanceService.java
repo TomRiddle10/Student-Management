@@ -16,7 +16,10 @@ import com.example.student_management.repository.StudentRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AttendanceService {
@@ -38,35 +41,89 @@ public class AttendanceService {
         this.enrollmentRepository = enrollmentRepository;
     }
 
-    // Get all students of a course and their attendance for a specific date
+    // =========================================================
+    // GET ATTENDANCE HISTORY FOR A MONTH
+    // =========================================================
+
+    public Map<LocalDate, Long> getAttendanceHistory(
+            Long courseId,
+            YearMonth month) {
+
+        // Check whether course exists
+        courseRepository.findById(courseId)
+                .orElseThrow(() ->
+                        new RuntimeException("Course not found"));
+
+        LocalDate startDate = month.atDay(1);
+        LocalDate endDate = month.atEndOfMonth();
+
+        List<Attendance> records =
+                attendanceRepository
+                        .findByCourseIdAndAttendanceDateBetween(
+                                courseId,
+                                startDate,
+                                endDate
+                        );
+
+        Map<LocalDate, Long> history =
+                new LinkedHashMap<>();
+
+        for (Attendance attendance : records) {
+
+            LocalDate date =
+                    attendance.getAttendanceDate();
+
+            history.put(
+                    date,
+                    history.getOrDefault(date, 0L) + 1
+            );
+        }
+
+        return history;
+    }
+
+    // =========================================================
+    // GET STUDENTS AND ATTENDANCE FOR A SPECIFIC DATE
+    // =========================================================
+
     public List<AttendanceStudentDTO> getAttendanceForDate(
             Long courseId,
             LocalDate date) {
 
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new RuntimeException("Course not found"));
+        // Check whether course exists
+        courseRepository.findById(courseId)
+                .orElseThrow(() ->
+                        new RuntimeException("Course not found"));
 
+        // Get all students enrolled in this course
         List<Enrollment> enrollments =
                 enrollmentRepository.findByCourseId(courseId);
 
+        // Get attendance records for selected date
         List<Attendance> attendanceRecords =
-                attendanceRepository.findByCourseIdAndAttendanceDate(
-                        courseId,
-                        date
-                );
+                attendanceRepository
+                        .findByCourseIdAndAttendanceDate(
+                                courseId,
+                                date
+                        );
 
         return enrollments.stream()
                 .map(enrollment -> {
 
-                    Student student = enrollment.getStudent();
+                    Student student =
+                            enrollment.getStudent();
 
-                    AttendanceStatus status = attendanceRecords.stream()
-                            .filter(attendance ->
-                                    attendance.getStudent().getId()
-                                            .equals(student.getId()))
-                            .map(Attendance::getStatus)
-                            .findFirst()
-                            .orElse(null);
+                    AttendanceStatus status =
+                            attendanceRecords.stream()
+                                    .filter(attendance ->
+                                            attendance
+                                                    .getStudent()
+                                                    .getId()
+                                                    .equals(student.getId())
+                                    )
+                                    .map(Attendance::getStatus)
+                                    .findFirst()
+                                    .orElse(null);
 
                     return new AttendanceStudentDTO(
                             student.getId(),
@@ -77,28 +134,41 @@ public class AttendanceService {
                 .toList();
     }
 
-    // Save attendance for the entire class
+    // =========================================================
+    // SAVE / UPDATE ATTENDANCE
+    // =========================================================
+
     public void saveAttendance(
             Long courseId,
             AttendanceRequestDTO request) {
 
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new RuntimeException("Course not found"));
+        Course course =
+                courseRepository.findById(courseId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Course not found"
+                                ));
 
         LocalDate date = request.getDate();
 
-        for (AttendanceRecordDTO record : request.getAttendance()) {
+        for (AttendanceRecordDTO record :
+                request.getAttendance()) {
 
-            Student student = studentRepository.findById(
-                    record.getStudentId()
-            ).orElseThrow(() ->
-                    new RuntimeException("Student not found"));
+            Student student =
+                    studentRepository.findById(
+                            record.getStudentId()
+                    ).orElseThrow(() ->
+                            new RuntimeException(
+                                    "Student not found"
+                            ));
 
-            boolean enrolled = enrollmentRepository
-                    .existsByStudentIdAndCourseId(
-                            student.getId(),
-                            courseId
-                    );
+            // Check whether student is enrolled
+            boolean enrolled =
+                    enrollmentRepository
+                            .existsByStudentIdAndCourseId(
+                                    student.getId(),
+                                    courseId
+                            );
 
             if (!enrolled) {
                 throw new RuntimeException(
@@ -106,6 +176,7 @@ public class AttendanceService {
                 );
             }
 
+            // Check whether attendance already exists
             Attendance attendance =
                     attendanceRepository
                             .findByStudentIdAndCourseIdAndAttendanceDate(
@@ -113,38 +184,57 @@ public class AttendanceService {
                                     courseId,
                                     date
                             )
-                            .orElse(new Attendance(
-                                    student,
-                                    course,
-                                    date,
-                                    record.getStatus()
-                            ));
+                            .orElse(
+                                    new Attendance(
+                                            student,
+                                            course,
+                                            date,
+                                            record.getStatus()
+                                    )
+                            );
 
-            attendance.setStatus(record.getStatus());
+            // Update status
+            attendance.setStatus(
+                    record.getStatus()
+            );
 
-            attendanceRepository.save(attendance);
+            attendanceRepository.save(
+                    attendance
+            );
         }
     }
 
-    // Get attendance summary for a student in a course
+    // =========================================================
+    // GET ATTENDANCE SUMMARY
+    // =========================================================
+
     public AttendanceSummaryDTO getAttendanceSummary(
             Long studentId,
             Long courseId) {
 
+        // Check student
         studentRepository.findById(studentId)
                 .orElseThrow(() ->
-                        new RuntimeException("Student not found"));
+                        new RuntimeException(
+                                "Student not found"
+                        ));
 
+        // Check course
         courseRepository.findById(courseId)
                 .orElseThrow(() ->
-                        new RuntimeException("Course not found"));
+                        new RuntimeException(
+                                "Course not found"
+                        ));
 
+        // Total attendance records
         long totalClasses =
-                attendanceRepository.countByStudentIdAndCourseId(
-                        studentId,
-                        courseId
-                );
+                attendanceRepository
+                        .countByStudentIdAndCourseId(
+                                studentId,
+                                courseId
+                        );
 
+        // Present count
         long present =
                 attendanceRepository
                         .countByStudentIdAndCourseIdAndStatus(
@@ -153,6 +243,7 @@ public class AttendanceService {
                                 AttendanceStatus.PRESENT
                         );
 
+        // Absent count
         long absent =
                 attendanceRepository
                         .countByStudentIdAndCourseIdAndStatus(
@@ -161,10 +252,13 @@ public class AttendanceService {
                                 AttendanceStatus.ABSENT
                         );
 
+        // Calculate percentage
         double percentage = 0;
 
         if (totalClasses > 0) {
-            percentage = ((double) present / totalClasses) * 100;
+            percentage =
+                    ((double) present / totalClasses)
+                            * 100;
         }
 
         return new AttendanceSummaryDTO(
