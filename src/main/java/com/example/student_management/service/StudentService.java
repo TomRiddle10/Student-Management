@@ -1,7 +1,14 @@
 package com.example.student_management.service;
 
 import com.example.student_management.entity.Student;
+import com.example.student_management.exception.ResourceNotFoundException;
 import com.example.student_management.repository.StudentRepository;
+import com.example.student_management.specification.StudentSpecification;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,7 +32,11 @@ public class StudentService {
 
     public Student getStudentById(Long id) {
         return studentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Student not found"));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException(
+                                "Student not found"
+                        )
+                );
     }
 
     public Student updateStudent(Long id, Student student) {
@@ -42,7 +53,43 @@ public class StudentService {
     }
 
     public void deleteStudent(Long id) {
+
         Student student = getStudentById(id);
+
         studentRepository.delete(student);
+    }
+
+    // Server-side filtering + sorting + pagination
+    public Page<Student> getStudentsWithPagination(
+            int page,
+            int size,
+            String sortBy,
+            String direction,
+            String search,
+            String department,
+            Integer year) {
+
+        Sort sort;
+
+        if (direction.equalsIgnoreCase("desc")) {
+            sort = Sort.by(sortBy).descending();
+        } else {
+            sort = Sort.by(sortBy).ascending();
+        }
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                sort
+        );
+
+        return studentRepository.findAll(
+                StudentSpecification.filterStudents(
+                        search,
+                        department,
+                        year
+                ),
+                pageable
+        );
     }
 }

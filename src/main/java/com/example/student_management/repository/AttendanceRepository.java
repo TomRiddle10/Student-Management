@@ -27,6 +27,8 @@ public interface AttendanceRepository
             Long courseId
     );
 
+    long countByCourseId(Long courseId);
+    
     long countByStudentIdAndCourseIdAndStatus(
             Long studentId,
             Long courseId,

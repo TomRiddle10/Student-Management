@@ -3,6 +3,7 @@ package com.example.student_management.service;
 import com.example.student_management.entity.Course;
 import com.example.student_management.repository.CourseRepository;
 import org.springframework.stereotype.Service;
+import com.example.student_management.exception.ResourceNotFoundException;
 
 import java.util.List;
 
@@ -25,7 +26,11 @@ public class CourseService {
 
     public Course getCourseById(Long id) {
         return courseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Course not found"));
+                .orElseThrow(() ->
+        new ResourceNotFoundException(
+                "Course not found with id: " + id
+        )
+);
     }
 
     public Course updateCourse(Long id, Course course) {

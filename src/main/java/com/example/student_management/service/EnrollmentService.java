@@ -3,9 +3,12 @@ package com.example.student_management.service;
 import com.example.student_management.entity.Course;
 import com.example.student_management.entity.Enrollment;
 import com.example.student_management.entity.Student;
+import com.example.student_management.exception.ConflictException;
+import com.example.student_management.exception.ResourceNotFoundException;
 import com.example.student_management.repository.CourseRepository;
 import com.example.student_management.repository.EnrollmentRepository;
 import com.example.student_management.repository.StudentRepository;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -27,45 +30,75 @@ public class EnrollmentService {
         this.courseRepository = courseRepository;
     }
 
-    // Get all courses of a student
     public List<Course> getStudentCourses(Long studentId) {
 
         studentRepository.findById(studentId)
-                .orElseThrow(() -> new RuntimeException("Student not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Student not found with id: " + studentId
+                        )
+                );
 
-        return enrollmentRepository.findByStudentId(studentId)
+        return enrollmentRepository
+                .findByStudentId(studentId)
                 .stream()
                 .map(Enrollment::getCourse)
                 .toList();
     }
 
-    // Add course to student
-    public Course addCourseToStudent(Long studentId, Long courseId) {
+    public Course addCourseToStudent(
+            Long studentId,
+            Long courseId) {
 
-        Student student = studentRepository.findById(studentId)
-                .orElseThrow(() -> new RuntimeException("Student not found"));
+        Student student = studentRepository
+                .findById(studentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Student not found with id: " + studentId
+                        )
+                );
 
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new RuntimeException("Course not found"));
+        Course course = courseRepository
+                .findById(courseId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Course not found with id: " + courseId
+                        )
+                );
 
-        if (enrollmentRepository.existsByStudentIdAndCourseId(studentId, courseId)) {
-            throw new RuntimeException("Student is already enrolled in this course");
+        if (enrollmentRepository
+                .existsByStudentIdAndCourseId(
+                        studentId,
+                        courseId)) {
+
+            throw new ConflictException(
+                    "Student is already enrolled in this course"
+            );
         }
 
-        Enrollment enrollment = new Enrollment(student, course);
+        Enrollment enrollment =
+                new Enrollment(student, course);
 
         enrollmentRepository.save(enrollment);
 
         return course;
     }
 
-    // Remove course from student
-    public void removeCourseFromStudent(Long studentId, Long courseId) {
+    public void removeCourseFromStudent(
+            Long studentId,
+            Long courseId) {
 
-        Enrollment enrollment = enrollmentRepository
-                .findByStudentIdAndCourseId(studentId, courseId)
-                .orElseThrow(() ->
-                        new RuntimeException("Student is not enrolled in this course"));
+        Enrollment enrollment =
+                enrollmentRepository
+                        .findByStudentIdAndCourseId(
+                                studentId,
+                                courseId
+                        )
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Student is not enrolled in this course"
+                                )
+                        );
 
         enrollmentRepository.delete(enrollment);
     }
