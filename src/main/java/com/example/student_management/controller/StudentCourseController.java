@@ -2,7 +2,9 @@ package com.example.student_management.controller;
 
 import com.example.student_management.entity.Course;
 import com.example.student_management.service.EnrollmentService;
+
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +19,11 @@ public class StudentCourseController {
         this.enrollmentService = enrollmentService;
     }
 
-    // Get courses of a student
+    // ADMIN and TEACHER can view any student's courses.
+    // STUDENT can view only their own courses.
+    @PreAuthorize(
+            "@studentSecurityService.canAccessStudent(#studentId, authentication)"
+    )
     @GetMapping("/{studentId}/courses")
     public ResponseEntity<List<Course>> getStudentCourses(
             @PathVariable Long studentId) {
@@ -27,24 +33,32 @@ public class StudentCourseController {
         );
     }
 
-    // Add course to student
+    // Only ADMIN can enroll a student into a course
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{studentId}/courses/{courseId}")
     public ResponseEntity<Course> addCourse(
             @PathVariable Long studentId,
             @PathVariable Long courseId) {
 
         return ResponseEntity.ok(
-                enrollmentService.addCourseToStudent(studentId, courseId)
+                enrollmentService.addCourseToStudent(
+                        studentId,
+                        courseId
+                )
         );
     }
 
-    // Remove course from student
+    // Only ADMIN can remove a student's course
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{studentId}/courses/{courseId}")
     public ResponseEntity<String> removeCourse(
             @PathVariable Long studentId,
             @PathVariable Long courseId) {
 
-        enrollmentService.removeCourseFromStudent(studentId, courseId);
+        enrollmentService.removeCourseFromStudent(
+                studentId,
+                courseId
+        );
 
         return ResponseEntity.ok(
                 "Course removed from student successfully"

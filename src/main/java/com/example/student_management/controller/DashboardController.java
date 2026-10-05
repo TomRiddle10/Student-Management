@@ -5,6 +5,7 @@ import com.example.student_management.dto.DashboardResponse;
 import com.example.student_management.service.DashboardService;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,12 +18,12 @@ public class DashboardController {
 
     private final DashboardService dashboardService;
 
-    public DashboardController(
-            DashboardService dashboardService) {
-
+    public DashboardController(DashboardService dashboardService) {
         this.dashboardService = dashboardService;
     }
 
+    // ADMIN + TEACHER
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @GetMapping
     public ResponseEntity<DashboardResponse> getDashboard() {
 
@@ -31,6 +32,8 @@ public class DashboardController {
         );
     }
 
+    // ADMIN + TEACHER
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @GetMapping("/course-attendance")
     public ResponseEntity<List<CourseAttendanceResponse>>
     getCourseAttendance() {

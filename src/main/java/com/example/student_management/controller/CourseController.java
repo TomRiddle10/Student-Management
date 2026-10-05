@@ -4,6 +4,7 @@ import com.example.student_management.entity.Course;
 import com.example.student_management.service.CourseService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,26 +19,40 @@ public class CourseController {
         this.courseService = courseService;
     }
 
+    // Only ADMIN can create courses
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<Course> createCourse(
             @Valid @RequestBody Course course) {
 
-        return ResponseEntity.ok(courseService.createCourse(course));
+        return ResponseEntity.ok(
+                courseService.createCourse(course)
+        );
     }
 
+    // ADMIN, TEACHER and STUDENT can view courses
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
     @GetMapping
     public ResponseEntity<List<Course>> getAllCourses() {
 
-        return ResponseEntity.ok(courseService.getAllCourses());
+        return ResponseEntity.ok(
+                courseService.getAllCourses()
+        );
     }
 
+    // ADMIN, TEACHER and STUDENT can view a course
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
     @GetMapping("/{id}")
     public ResponseEntity<Course> getCourseById(
             @PathVariable Long id) {
 
-        return ResponseEntity.ok(courseService.getCourseById(id));
+        return ResponseEntity.ok(
+                courseService.getCourseById(id)
+        );
     }
 
+    // Only ADMIN can update courses
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<Course> updateCourse(
             @PathVariable Long id,
@@ -48,12 +63,16 @@ public class CourseController {
         );
     }
 
+    // Only ADMIN can delete courses
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteCourse(
             @PathVariable Long id) {
 
         courseService.deleteCourse(id);
 
-        return ResponseEntity.ok("Course deleted successfully");
+        return ResponseEntity.ok(
+                "Course deleted successfully"
+        );
     }
 }

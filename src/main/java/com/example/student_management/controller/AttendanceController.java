@@ -6,6 +6,7 @@ import com.example.student_management.dto.AttendanceSummaryDTO;
 import com.example.student_management.service.AttendanceService;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -23,29 +24,52 @@ public class AttendanceController {
         this.attendanceService = attendanceService;
     }
 
-    // Get all students of a course and their attendance for a date
+    // =========================================================
+    // GET ATTENDANCE FOR A DATE
+    // ADMIN + TEACHER
+    // =========================================================
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @GetMapping("/courses/{courseId}/attendance")
     public ResponseEntity<List<AttendanceStudentDTO>> getAttendance(
             @PathVariable Long courseId,
             @RequestParam LocalDate date) {
 
         return ResponseEntity.ok(
-                attendanceService.getAttendanceForDate(courseId, date)
+                attendanceService.getAttendanceForDate(
+                        courseId,
+                        date
+                )
         );
     }
 
-    // Save attendance for a course and date
+    // =========================================================
+    // SAVE / UPDATE ATTENDANCE
+    // ADMIN + TEACHER
+    // =========================================================
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @PostMapping("/courses/{courseId}/attendance")
     public ResponseEntity<String> saveAttendance(
             @PathVariable Long courseId,
             @RequestBody AttendanceRequestDTO request) {
 
-        attendanceService.saveAttendance(courseId, request);
+        attendanceService.saveAttendance(
+                courseId,
+                request
+        );
 
-        return ResponseEntity.ok("Attendance saved successfully");
+        return ResponseEntity.ok(
+                "Attendance saved successfully"
+        );
     }
 
-    // Get attendance history for a month
+    // =========================================================
+    // ATTENDANCE HISTORY
+    // ADMIN + TEACHER
+    // =========================================================
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @GetMapping("/courses/{courseId}/attendance/history")
     public ResponseEntity<Map<LocalDate, Long>> getAttendanceHistory(
             @PathVariable Long courseId,
@@ -54,18 +78,32 @@ public class AttendanceController {
         YearMonth yearMonth = YearMonth.parse(month);
 
         return ResponseEntity.ok(
-                attendanceService.getAttendanceHistory(courseId, yearMonth)
+                attendanceService.getAttendanceHistory(
+                        courseId,
+                        yearMonth
+                )
         );
     }
 
-    // Get attendance summary of a student for a course
+    // =========================================================
+    // STUDENT ATTENDANCE SUMMARY
+    // ADMIN + TEACHER → ANY STUDENT
+    // STUDENT → OWN ATTENDANCE ONLY
+    // =========================================================
+
+    @PreAuthorize(
+            "@studentSecurityService.canAccessStudent(#studentId, authentication)"
+    )
     @GetMapping("/students/{studentId}/attendance")
     public ResponseEntity<AttendanceSummaryDTO> getAttendanceSummary(
             @PathVariable Long studentId,
             @RequestParam Long courseId) {
 
         return ResponseEntity.ok(
-                attendanceService.getAttendanceSummary(studentId, courseId)
+                attendanceService.getAttendanceSummary(
+                        studentId,
+                        courseId
+                )
         );
     }
 }

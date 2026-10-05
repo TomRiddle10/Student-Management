@@ -2,6 +2,7 @@ package com.example.student_management.controller;
 
 import com.example.student_management.entity.Student;
 import com.example.student_management.service.StudentService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import jakarta.validation.Valid;
 
@@ -21,6 +22,8 @@ public class StudentController {
         this.studentService = studentService;
     }
 
+    // Only ADMIN can create students
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<Student> createStudent(
             @Valid @RequestBody Student student) {
@@ -30,6 +33,8 @@ public class StudentController {
         );
     }
 
+    // ADMIN and TEACHER can view all students
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @GetMapping
     public ResponseEntity<List<Student>> getAllStudents() {
 
@@ -45,7 +50,10 @@ public class StudentController {
      * Search
      * Department filter
      * Year filter
+     *
+     * ADMIN and TEACHER can access this.
      */
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @GetMapping("/page")
     public ResponseEntity<Page<Student>> getStudentsWithPagination(
 
@@ -83,6 +91,8 @@ public class StudentController {
         );
     }
 
+    // ADMIN and TEACHER can view student details
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @GetMapping("/{id}")
     public ResponseEntity<Student> getStudentById(
             @PathVariable Long id) {
@@ -92,6 +102,8 @@ public class StudentController {
         );
     }
 
+    // Only ADMIN can update students
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<Student> updateStudent(
             @PathVariable Long id,
@@ -102,6 +114,8 @@ public class StudentController {
         );
     }
 
+    // Only ADMIN can delete students
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteStudent(
             @PathVariable Long id) {
