@@ -1,8 +1,10 @@
 package com.example.student_management.service;
 
 import com.example.student_management.entity.Student;
+import com.example.student_management.entity.User;
 import com.example.student_management.exception.ResourceNotFoundException;
 import com.example.student_management.repository.StudentRepository;
+import com.example.student_management.repository.UserRepository;
 import com.example.student_management.specification.StudentSpecification;
 
 import org.springframework.data.domain.Page;
@@ -17,9 +19,14 @@ import java.util.List;
 public class StudentService {
 
     private final StudentRepository studentRepository;
+    private final UserRepository userRepository;
 
-    public StudentService(StudentRepository studentRepository) {
+    public StudentService(
+            StudentRepository studentRepository,
+            UserRepository userRepository) {
+
         this.studentRepository = studentRepository;
+        this.userRepository = userRepository;
     }
 
     public Student createStudent(Student student) {
@@ -38,6 +45,26 @@ public class StudentService {
                         )
                 );
     }
+
+    // =========================================================
+    // GET LOGGED-IN STUDENT
+    // =========================================================
+
+    public Student getCurrentStudent(String login) {
+
+    User user = userRepository.findByUsername(login)
+            .orElseGet(() ->
+                    userRepository.findByEmail(login)
+                            .orElseThrow(() ->
+                                    new ResourceNotFoundException("User not found")
+                            )
+            );
+
+    return studentRepository.findByEmail(user.getEmail())
+            .orElseThrow(() ->
+                    new ResourceNotFoundException("Student profile not found")
+            );
+}
 
     public Student updateStudent(Long id, Student student) {
 

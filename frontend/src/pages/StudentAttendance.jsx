@@ -16,31 +16,22 @@ import {
   Typography,
 } from "@mui/material";
 
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 
-import {
-  apiGet,
-  getUser,
-} from "../config";
-
-
-// =========================================================
-// Student Attendance
-// =========================================================
+import { apiGet } from "../config";
 
 function StudentAttendance() {
-  const user = getUser();
-
   const [student, setStudent] = useState(null);
   const [attendance, setAttendance] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   // =========================================================
-  // Load Student + Attendance
+  // LOAD STUDENT + COURSES + ATTENDANCE
   // =========================================================
 
   useEffect(() => {
@@ -52,55 +43,70 @@ function StudentAttendance() {
       setLoading(true);
       setError("");
 
-      if (!user?.id) {
-        throw new Error("User information not found.");
-      }
+      // -------------------------------------------------------
+      // 1. Get logged-in student's profile
+      // -------------------------------------------------------
 
-      // Get student information using logged-in user's email
-      const students = await apiGet(
-        `/students?search=${encodeURIComponent(
-          user.email || ""
-        )}`
-      );
+      const currentStudent = await apiGet("/students/me");
 
-      let currentStudent = null;
-
-      if (Array.isArray(students)) {
-        currentStudent = students.find(
-          (item) =>
-            item.email?.toLowerCase() ===
-            user.email?.toLowerCase()
-        );
-      } else if (students?.content) {
-        currentStudent = students.content.find(
-          (item) =>
-            item.email?.toLowerCase() ===
-            user.email?.toLowerCase()
-        );
-      }
-
-      if (!currentStudent) {
-        throw new Error(
-          "Student profile could not be found."
-        );
+      if (!currentStudent?.id) {
+        throw new Error("Student profile could not be found.");
       }
 
       setStudent(currentStudent);
 
-      // Get attendance summary
-      const data = await apiGet(
-        `/students/${currentStudent.id}/attendance/summary`
+      // -------------------------------------------------------
+      // 2. Get courses enrolled by this student
+      // -------------------------------------------------------
+
+      const courses = await apiGet(
+        `/students/${currentStudent.id}/courses`
       );
 
-      const attendanceData =
-        Array.isArray(data)
-          ? data
-          : data?.content ||
-            data?.attendance ||
-            data?.courses ||
-            [];
+      const enrolledCourses = Array.isArray(courses)
+        ? courses
+        : courses?.content || [];
 
-      setAttendance(attendanceData);
+      // -------------------------------------------------------
+      // 3. Get attendance for every enrolled course
+      // -------------------------------------------------------
+
+      const attendanceResults = await Promise.all(
+        enrolledCourses.map(async (course) => {
+          try {
+            const summary = await apiGet(
+              `/students/${currentStudent.id}/attendance?courseId=${course.id}`
+            );
+
+            return {
+              courseId: course.id,
+              courseCode: course.courseCode,
+              courseName: course.courseName,
+              totalClasses: Number(summary?.totalClasses ?? 0),
+              present: Number(summary?.present ?? 0),
+              absent: Number(summary?.absent ?? 0),
+              percentage: Number(summary?.percentage ?? 0),
+            };
+          } catch (courseError) {
+            console.error(
+              `Failed to load attendance for course ${course.id}:`,
+              courseError
+            );
+
+            return {
+              courseId: course.id,
+              courseCode: course.courseCode,
+              courseName: course.courseName,
+              totalClasses: 0,
+              present: 0,
+              absent: 0,
+              percentage: 0,
+            };
+          }
+        })
+      );
+
+      setAttendance(attendanceResults);
     } catch (err) {
       console.error(
         "Failed to load student attendance:",
@@ -116,65 +122,40 @@ function StudentAttendance() {
     }
   };
 
-
   // =========================================================
-  // Normalize Attendance Data
+  // NORMALIZE ATTENDANCE DATA
   // =========================================================
 
   const normalizedAttendance = useMemo(() => {
     return attendance.map((item) => ({
-      courseId:
-        item.courseId ??
-        item.course?.id ??
-        item.id,
+      courseId: item.courseId,
 
       courseCode:
-        item.courseCode ??
-        item.course?.courseCode ??
-        "N/A",
+        item.courseCode || "N/A",
 
       courseName:
-        item.courseName ??
-        item.course?.courseName ??
-        "Unknown Course",
+        item.courseName || "Unknown Course",
 
-      total:
-        Number(
-          item.total ??
-            item.totalClasses ??
-            item.totalAttendance ??
-            0
-        ),
+      total: Number(
+        item.totalClasses ?? 0
+      ),
 
-      present:
-        Number(
-          item.present ??
-            item.presentCount ??
-            item.presentClasses ??
-            0
-        ),
+      present: Number(
+        item.present ?? 0
+      ),
 
-      absent:
-        Number(
-          item.absent ??
-            item.absentCount ??
-            item.absentClasses ??
-            0
-        ),
+      absent: Number(
+        item.absent ?? 0
+      ),
 
-      percentage:
-        Number(
-          item.percentage ??
-            item.attendancePercentage ??
-            item.attendancePercent ??
-            0
-        ),
+      percentage: Number(
+        item.percentage ?? 0
+      ),
     }));
   }, [attendance]);
 
-
   // =========================================================
-  // Overall Statistics
+  // OVERALL STATISTICS
   // =========================================================
 
   const overallStats = useMemo(() => {
@@ -206,9 +187,8 @@ function StudentAttendance() {
     };
   }, [normalizedAttendance]);
 
-
   // =========================================================
-  // Loading
+  // LOADING
   // =========================================================
 
   if (loading) {
@@ -227,6 +207,7 @@ function StudentAttendance() {
             alignItems="center"
           >
             <CircularProgress />
+
             <Typography color="text.secondary">
               Loading attendance...
             </Typography>
@@ -236,9 +217,8 @@ function StudentAttendance() {
     );
   }
 
-
   // =========================================================
-  // Error
+  // ERROR
   // =========================================================
 
   if (error) {
@@ -253,9 +233,8 @@ function StudentAttendance() {
     );
   }
 
-
   // =========================================================
-  // Main UI
+  // MAIN UI
   // =========================================================
 
   return (
@@ -263,9 +242,8 @@ function StudentAttendance() {
       maxWidth="xl"
       sx={{ py: 4 }}
     >
-
       {/* ================================================= */}
-      {/* Header */}
+      {/* HEADER */}
       {/* ================================================= */}
 
       <Box sx={{ mb: 4 }}>
@@ -286,9 +264,8 @@ function StudentAttendance() {
         </Typography>
       </Box>
 
-
       {/* ================================================= */}
-      {/* Student Information */}
+      {/* STUDENT INFORMATION */}
       {/* ================================================= */}
 
       {student && (
@@ -310,7 +287,6 @@ function StudentAttendance() {
             justifyContent="space-between"
             spacing={2}
           >
-
             <Box>
               <Typography
                 variant="h6"
@@ -346,14 +322,12 @@ function StudentAttendance() {
                 />
               )}
             </Stack>
-
           </Stack>
         </Paper>
       )}
 
-
       {/* ================================================= */}
-      {/* Overall Statistics */}
+      {/* OVERALL STATISTICS */}
       {/* ================================================= */}
 
       <Grid
@@ -361,7 +335,6 @@ function StudentAttendance() {
         spacing={3}
         sx={{ mb: 4 }}
       >
-
         {/* Overall Attendance */}
 
         <Grid
@@ -399,10 +372,7 @@ function StudentAttendance() {
                     fontWeight={700}
                     sx={{ mt: 1 }}
                   >
-                    {overallStats.percentage.toFixed(
-                      1
-                    )}
-                    %
+                    {overallStats.percentage.toFixed(1)}%
                   </Typography>
                 </Box>
 
@@ -411,7 +381,6 @@ function StudentAttendance() {
             </CardContent>
           </Card>
         </Grid>
-
 
         {/* Total Classes */}
 
@@ -450,7 +419,6 @@ function StudentAttendance() {
           </Card>
         </Grid>
 
-
         {/* Present */}
 
         <Grid
@@ -488,7 +456,6 @@ function StudentAttendance() {
           </Card>
         </Grid>
 
-
         {/* Absent */}
 
         <Grid
@@ -525,12 +492,10 @@ function StudentAttendance() {
             </CardContent>
           </Card>
         </Grid>
-
       </Grid>
 
-
       {/* ================================================= */}
-      {/* Course Attendance */}
+      {/* COURSE ATTENDANCE */}
       {/* ================================================= */}
 
       <Box sx={{ mb: 2 }}>
@@ -550,7 +515,6 @@ function StudentAttendance() {
           enrolled course.
         </Typography>
       </Box>
-
 
       {normalizedAttendance.length === 0 ? (
         <Paper
@@ -591,190 +555,155 @@ function StudentAttendance() {
           container
           spacing={3}
         >
-          {normalizedAttendance.map(
-            (item) => {
+          {normalizedAttendance.map((item) => {
+            const percentage = Math.min(
+              Math.max(item.percentage, 0),
+              100
+            );
 
-              const percentage = Math.min(
-                Math.max(item.percentage, 0),
-                100
-              );
-
-              return (
-                <Grid
-                  size={{
-                    xs: 12,
-                    md: 6,
+            return (
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6,
+                }}
+                key={item.courseId}
+              >
+                <Card
+                  elevation={0}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 3,
+                    height: "100%",
                   }}
-                  key={item.courseId}
                 >
-                  <Card
-                    elevation={0}
-                    sx={{
-                      border: "1px solid",
-                      borderColor: "divider",
-                      borderRadius: 3,
-                      height: "100%",
-                    }}
-                  >
-                    <CardContent
-                      sx={{ p: 3 }}
+                  <CardContent sx={{ p: 3 }}>
+                    {/* Course Header */}
+
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="flex-start"
+                      spacing={2}
                     >
+                      <Box>
+                        <Typography
+                          variant="overline"
+                          color="text.secondary"
+                        >
+                          {item.courseCode}
+                        </Typography>
 
-                      {/* Course Header */}
-
-                      <Stack
-                        direction="row"
-                        justifyContent="space-between"
-                        alignItems="flex-start"
-                        spacing={2}
-                      >
-                        <Box>
-                          <Typography
-                            variant="overline"
-                            color="text.secondary"
-                          >
-                            {item.courseCode}
-                          </Typography>
-
-                          <Typography
-                            variant="h6"
-                            fontWeight={600}
-                          >
-                            {item.courseName}
-                          </Typography>
-                        </Box>
-
-                        <Chip
-                          label={`${percentage.toFixed(
-                            1
-                          )}%`}
-                          color={
-                            percentage >= 75
-                              ? "success"
-                              : percentage >= 60
-                              ? "warning"
-                              : "error"
-                          }
-                        />
-                      </Stack>
-
-
-                      <Divider
-                        sx={{ my: 2 }}
-                      />
-
-
-                      {/* Progress */}
-
-                      <Box sx={{ mb: 2 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={percentage}
-                          sx={{
-                            height: 8,
-                            borderRadius: 5,
-                          }}
-                        />
+                        <Typography
+                          variant="h6"
+                          fontWeight={600}
+                        >
+                          {item.courseName}
+                        </Typography>
                       </Box>
 
+                      <Chip
+                        label={`${percentage.toFixed(1)}%`}
+                        color={
+                          percentage >= 75
+                            ? "success"
+                            : percentage >= 60
+                              ? "warning"
+                              : "error"
+                        }
+                      />
+                    </Stack>
 
-                      {/* Attendance Counts */}
+                    <Divider sx={{ my: 2 }} />
 
-                      <Grid
-                        container
-                        spacing={2}
-                      >
+                    {/* Progress */}
 
-                        <Grid
-                          size={{ xs: 4 }}
+                    <Box sx={{ mb: 2 }}>
+                      <LinearProgress
+                        variant="determinate"
+                        value={percentage}
+                        sx={{
+                          height: 8,
+                          borderRadius: 5,
+                        }}
+                      />
+                    </Box>
+
+                    {/* Attendance Counts */}
+
+                    <Grid
+                      container
+                      spacing={2}
+                    >
+                      <Grid size={{ xs: 4 }}>
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
                         >
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <CheckCircleOutlineIcon
-                              fontSize="small"
-                            />
+                          <CheckCircleOutlinedIcon fontSize="small" />
 
-                            <Box>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                Present
-                              </Typography>
-
-                              <Typography
-                                fontWeight={600}
-                              >
-                                {item.present}
-                              </Typography>
-                            </Box>
-                          </Stack>
-                        </Grid>
-
-
-                        <Grid
-                          size={{ xs: 4 }}
-                        >
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <CancelOutlinedIcon
-                              fontSize="small"
-                            />
-
-                            <Box>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                Absent
-                              </Typography>
-
-                              <Typography
-                                fontWeight={600}
-                              >
-                                {item.absent}
-                              </Typography>
-                            </Box>
-                          </Stack>
-                        </Grid>
-
-
-                        <Grid
-                          size={{ xs: 4 }}
-                        >
                           <Box>
                             <Typography
                               variant="caption"
                               color="text.secondary"
                             >
-                              Total
+                              Present
                             </Typography>
 
-                            <Typography
-                              fontWeight={600}
-                            >
-                              {item.total}
+                            <Typography fontWeight={600}>
+                              {item.present}
                             </Typography>
                           </Box>
-                        </Grid>
-
+                        </Stack>
                       </Grid>
 
-                    </CardContent>
-                  </Card>
-                </Grid>
-              );
-            }
-          )}
+                      <Grid size={{ xs: 4 }}>
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                        >
+                          <CancelOutlinedIcon fontSize="small" />
+
+                          <Box>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Absent
+                            </Typography>
+
+                            <Typography fontWeight={600}>
+                              {item.absent}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </Grid>
+
+                      <Grid size={{ xs: 4 }}>
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                          >
+                            Total
+                          </Typography>
+
+                          <Typography fontWeight={600}>
+                            {item.total}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          })}
         </Grid>
       )}
-
     </Container>
   );
 }

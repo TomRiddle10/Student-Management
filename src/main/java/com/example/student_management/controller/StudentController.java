@@ -5,7 +5,7 @@ import com.example.student_management.service.StudentService;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import jakarta.validation.Valid;
-
+import org.springframework.security.core.Authentication;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,7 +32,18 @@ public class StudentController {
                 studentService.createStudent(student)
         );
     }
+    // Logged-in STUDENT can view their own profile
+@PreAuthorize("hasRole('STUDENT')")
+@GetMapping("/me")
+public ResponseEntity<Student> getMyProfile(
+        Authentication authentication) {
 
+    return ResponseEntity.ok(
+            studentService.getCurrentStudent(
+                    authentication.getName()
+            )
+    );
+}
     // ADMIN and TEACHER can view all students
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @GetMapping

@@ -42,7 +42,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authorizationHeader =
                 request.getHeader("Authorization");
 
-        // No JWT token
         if (authorizationHeader == null
                 || !authorizationHeader.startsWith("Bearer ")) {
 
@@ -54,19 +53,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
 
-            // Validate JWT
             if (jwtService.isTokenValid(token)) {
 
-                // Extract username from JWT
                 String username =
                         jwtService.extractUsername(token);
 
-                // Find user directly from repository
                 User user = userRepository
                         .findByUsername(username)
                         .orElse(null);
 
-                if (user != null) {
+                if (user != null
+                        && SecurityContextHolder
+                                .getContext()
+                                .getAuthentication() == null) {
 
                     SimpleGrantedAuthority authority =
                             new SimpleGrantedAuthority(
@@ -91,9 +90,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
 
-        } catch (Exception ignored) {
-            // Invalid/expired JWT.
-            // Request remains unauthenticated.
+        } catch (Exception e) {
+
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
