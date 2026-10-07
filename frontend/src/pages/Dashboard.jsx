@@ -26,10 +26,14 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
+import SupervisorAccountOutlinedIcon from "@mui/icons-material/SupervisorAccountOutlined";
 
-const API_URL = "http://localhost:8080/api";
+import StudentDashboard from "./StudentDashboard";
+import TeacherDashboard from "./TeacherDashboard";
 
-function Dashboard() {
+const API_URL = "/api";
+
+function AdminDashboard() {
   const navigate = useNavigate();
 
   const [stats, setStats] = useState(null);
@@ -38,6 +42,11 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+
+  const getHeaders = () => ({
+    Authorization: `Bearer ${localStorage.getItem("token")}`,
+    "Content-Type": "application/json",
+  });
 
   const fetchDashboard = async (isRefresh = false) => {
     try {
@@ -51,8 +60,12 @@ function Dashboard() {
 
       const [dashboardResponse, courseAttendanceResponse] =
         await Promise.all([
-          fetch(`${API_URL}/dashboard`),
-          fetch(`${API_URL}/dashboard/course-attendance`),
+          fetch(`${API_URL}/dashboard`, {
+            headers: getHeaders(),
+          }),
+          fetch(`${API_URL}/dashboard/course-attendance`, {
+            headers: getHeaders(),
+          }),
         ]);
 
       if (!dashboardResponse.ok) {
@@ -60,9 +73,7 @@ function Dashboard() {
       }
 
       if (!courseAttendanceResponse.ok) {
-        throw new Error(
-          "Failed to load course attendance data"
-        );
+        throw new Error("Failed to load course attendance data");
       }
 
       const dashboardData = await dashboardResponse.json();
@@ -122,7 +133,6 @@ function Dashboard() {
     stats.totalAttendanceRecords || 0;
 
   const totalPresent = stats.totalPresent || 0;
-
   const totalAbsent = stats.totalAbsent || 0;
 
   const presentPercentage =
@@ -181,10 +191,7 @@ function Dashboard() {
   return (
     <Box sx={{ pb: 5 }}>
 
-      {/* =====================================================
-          HEADER
-      ====================================================== */}
-
+      {/* HEADER */}
       <Box
         sx={{
           display: "flex",
@@ -205,19 +212,16 @@ function Dashboard() {
           <Typography
             variant="h4"
             fontWeight={800}
-            sx={{
-              letterSpacing: "-0.5px",
-            }}
+            letterSpacing="-0.5px"
           >
-            Dashboard
+            Admin Dashboard
           </Typography>
 
           <Typography
             color="text.secondary"
             sx={{ mt: 0.5 }}
           >
-            Welcome back. Here's an overview of your
-            student management system.
+            Overview of your student management system.
           </Typography>
         </Box>
 
@@ -236,10 +240,7 @@ function Dashboard() {
         </Button>
       </Box>
 
-      {/* =====================================================
-          STATISTICS CARDS
-      ====================================================== */}
-
+      {/* STATISTICS */}
       <Grid container spacing={2.5}>
         {statCards.map((card) => (
           <Grid
@@ -255,13 +256,10 @@ function Dashboard() {
               sx={{
                 height: "100%",
                 borderRadius: 3,
-                cursor: card.action
-                  ? "pointer"
-                  : "default",
+                cursor: card.action ? "pointer" : "default",
                 border: "1px solid",
                 borderColor: "divider",
                 transition: "all 0.2s ease",
-
                 "&:hover": card.action
                   ? {
                       transform: "translateY(-3px)",
@@ -312,7 +310,6 @@ function Dashboard() {
                       justifyContent: "center",
                       bgcolor: "primary.main",
                       color: "primary.contrastText",
-
                       "& svg": {
                         fontSize: 26,
                       },
@@ -327,18 +324,13 @@ function Dashboard() {
         ))}
       </Grid>
 
-      {/* =====================================================
-          MAIN ANALYTICS
-      ====================================================== */}
-
+      {/* ANALYTICS */}
       <Grid
         container
         spacing={2.5}
         sx={{ mt: 0.5 }}
       >
-
         {/* Attendance Overview */}
-
         <Grid
           size={{
             xs: 12,
@@ -354,7 +346,6 @@ function Dashboard() {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-
               <Box
                 display="flex"
                 justifyContent="space-between"
@@ -394,23 +385,18 @@ function Dashboard() {
                   },
                 }}
               >
-
-                {/* Circular Attendance */}
-
                 <Box
                   sx={(theme) => ({
                     minWidth: 150,
                     width: 150,
                     height: 150,
                     borderRadius: "50%",
-
                     background: `conic-gradient(
                       ${theme.palette.primary.main}
                       ${attendancePercentage}%,
                       ${theme.palette.action.hover}
                       ${attendancePercentage}% 100%
                     )`,
-
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -444,8 +430,6 @@ function Dashboard() {
                   </Box>
                 </Box>
 
-                {/* Attendance Details */}
-
                 <Box
                   flex={1}
                   width="100%"
@@ -471,9 +455,6 @@ function Dashboard() {
                   />
 
                   <Stack spacing={2}>
-
-                    {/* Present */}
-
                     <Box
                       display="flex"
                       justifyContent="space-between"
@@ -487,7 +468,6 @@ function Dashboard() {
                           fontSize="small"
                           color="success"
                         />
-
                         <Typography>
                           Present
                         </Typography>
@@ -497,8 +477,6 @@ function Dashboard() {
                         {totalPresent}
                       </Typography>
                     </Box>
-
-                    {/* Absent */}
 
                     <Box
                       display="flex"
@@ -513,7 +491,6 @@ function Dashboard() {
                           fontSize="small"
                           color="error"
                         />
-
                         <Typography>
                           Absent
                         </Typography>
@@ -523,8 +500,6 @@ function Dashboard() {
                         {totalAbsent}
                       </Typography>
                     </Box>
-
-                    {/* Total */}
 
                     <Box
                       display="flex"
@@ -538,7 +513,6 @@ function Dashboard() {
                         {totalAttendanceRecords}
                       </Typography>
                     </Box>
-
                   </Stack>
                 </Box>
               </Box>
@@ -547,7 +521,6 @@ function Dashboard() {
         </Grid>
 
         {/* Attendance Breakdown */}
-
         <Grid
           size={{
             xs: 12,
@@ -563,7 +536,6 @@ function Dashboard() {
             }}
           >
             <CardContent sx={{ p: 3 }}>
-
               <Typography
                 variant="h6"
                 fontWeight={800}
@@ -580,9 +552,6 @@ function Dashboard() {
               </Typography>
 
               <Stack spacing={3}>
-
-                {/* Present */}
-
                 <Box>
                   <Box
                     display="flex"
@@ -616,8 +585,6 @@ function Dashboard() {
                   </Typography>
                 </Box>
 
-                {/* Absent */}
-
                 <Box>
                   <Box
                     display="flex"
@@ -650,7 +617,6 @@ function Dashboard() {
                     {absentPercentage.toFixed(1)}%
                   </Typography>
                 </Box>
-
               </Stack>
 
               <Divider sx={{ my: 3 }} />
@@ -677,16 +643,12 @@ function Dashboard() {
                   {totalAttendanceRecords}
                 </Typography>
               </Box>
-
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* =====================================================
-          COURSE-WISE ATTENDANCE
-      ====================================================== */}
-
+      {/* COURSE ATTENDANCE */}
       <Card
         sx={{
           mt: 2.5,
@@ -696,7 +658,6 @@ function Dashboard() {
         }}
       >
         <CardContent sx={{ p: 3 }}>
-
           <Box
             display="flex"
             justifyContent="space-between"
@@ -740,19 +701,9 @@ function Dashboard() {
               >
                 No courses available
               </Typography>
-
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5 }}
-              >
-                Add courses and record attendance to see
-                course-wise analytics.
-              </Typography>
             </Box>
           ) : (
             <Grid container spacing={2}>
-
               {courseAttendance.map((course) => {
                 const percentage = Math.min(
                   course.percentage || 0,
@@ -773,17 +724,8 @@ function Dashboard() {
                         borderRadius: 2.5,
                         border: "1px solid",
                         borderColor: "divider",
-                        transition: "all 0.2s ease",
-
-                        "&:hover": {
-                          borderColor: "primary.main",
-                          boxShadow: 2,
-                        },
                       }}
                     >
-
-                      {/* Course Header */}
-
                       <Box
                         display="flex"
                         justifyContent="space-between"
@@ -802,7 +744,6 @@ function Dashboard() {
                           <Typography
                             variant="h6"
                             fontWeight={700}
-                            sx={{ mt: 0.3 }}
                           >
                             {course.courseName}
                           </Typography>
@@ -816,8 +757,6 @@ function Dashboard() {
                         </Typography>
                       </Box>
 
-                      {/* Progress */}
-
                       <LinearProgress
                         variant="determinate"
                         value={percentage}
@@ -828,13 +767,9 @@ function Dashboard() {
                         }}
                       />
 
-                      {/* Statistics */}
-
                       <Stack
                         direction="row"
                         spacing={3}
-                        flexWrap="wrap"
-                        useFlexGap
                       >
                         <Box>
                           <Typography
@@ -881,22 +816,16 @@ function Dashboard() {
                           </Typography>
                         </Box>
                       </Stack>
-
                     </Box>
                   </Grid>
                 );
               })}
-
             </Grid>
           )}
-
         </CardContent>
       </Card>
 
-      {/* =====================================================
-          QUICK ACTIONS
-      ====================================================== */}
-
+      {/* QUICK ACTIONS */}
       <Card
         sx={{
           mt: 2.5,
@@ -906,7 +835,6 @@ function Dashboard() {
         }}
       >
         <CardContent sx={{ p: 3 }}>
-
           <Typography
             variant="h6"
             fontWeight={800}
@@ -924,24 +852,17 @@ function Dashboard() {
           </Typography>
 
           <Grid container spacing={2}>
-
-            {/* Students */}
-
             <Grid
               size={{
                 xs: 12,
-                sm: 4,
+                sm: 3,
               }}
             >
               <Button
                 fullWidth
                 variant="outlined"
-                startIcon={
-                  <PersonAddAlt1OutlinedIcon />
-                }
-                onClick={() =>
-                  navigate("/students")
-                }
+                startIcon={<PersonAddAlt1OutlinedIcon />}
+                onClick={() => navigate("/students")}
                 sx={{
                   py: 1.5,
                   borderRadius: 2,
@@ -953,21 +874,17 @@ function Dashboard() {
               </Button>
             </Grid>
 
-            {/* Courses */}
-
             <Grid
               size={{
                 xs: 12,
-                sm: 4,
+                sm: 3,
               }}
             >
               <Button
                 fullWidth
                 variant="outlined"
                 startIcon={<AddIcon />}
-                onClick={() =>
-                  navigate("/courses")
-                }
+                onClick={() => navigate("/courses")}
                 sx={{
                   py: 1.5,
                   borderRadius: 2,
@@ -979,23 +896,41 @@ function Dashboard() {
               </Button>
             </Grid>
 
-            {/* Attendance */}
+            <Grid
+              size={{
+                xs: 12,
+                sm: 3,
+              }}
+            >
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={
+                  <SupervisorAccountOutlinedIcon />
+                }
+                onClick={() => navigate("/teachers")}
+                sx={{
+                  py: 1.5,
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 600,
+                }}
+              >
+                Manage Teachers
+              </Button>
+            </Grid>
 
             <Grid
               size={{
                 xs: 12,
-                sm: 4,
+                sm: 3,
               }}
             >
               <Button
                 fullWidth
                 variant="contained"
-                startIcon={
-                  <FactCheckOutlinedIcon />
-                }
-                onClick={() =>
-                  navigate("/attendance")
-                }
+                startIcon={<FactCheckOutlinedIcon />}
+                onClick={() => navigate("/attendance")}
                 sx={{
                   py: 1.5,
                   borderRadius: 2,
@@ -1006,137 +941,25 @@ function Dashboard() {
                 Take Attendance
               </Button>
             </Grid>
-
           </Grid>
         </CardContent>
       </Card>
-
-      {/* =====================================================
-          SYSTEM OVERVIEW
-      ====================================================== */}
-
-      <Card
-        sx={{
-          mt: 2.5,
-          borderRadius: 3,
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <CardContent sx={{ p: 3 }}>
-
-          <Typography
-            variant="h6"
-            fontWeight={800}
-            mb={2}
-          >
-            System Overview
-          </Typography>
-
-          <Grid container spacing={2}>
-
-            {/* Students */}
-
-            <Grid
-              size={{
-                xs: 12,
-                sm: 4,
-              }}
-            >
-              <Box
-                sx={{
-                  p: 2.5,
-                  borderRadius: 2,
-                  bgcolor: "action.hover",
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                >
-                  Students
-                </Typography>
-
-                <Typography
-                  variant="h5"
-                  fontWeight={800}
-                  sx={{ mt: 0.5 }}
-                >
-                  {stats.totalStudents}
-                </Typography>
-              </Box>
-            </Grid>
-
-            {/* Courses */}
-
-            <Grid
-              size={{
-                xs: 12,
-                sm: 4,
-              }}
-            >
-              <Box
-                sx={{
-                  p: 2.5,
-                  borderRadius: 2,
-                  bgcolor: "action.hover",
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                >
-                  Courses
-                </Typography>
-
-                <Typography
-                  variant="h5"
-                  fontWeight={800}
-                  sx={{ mt: 0.5 }}
-                >
-                  {stats.totalCourses}
-                </Typography>
-              </Box>
-            </Grid>
-
-            {/* Enrollments */}
-
-            <Grid
-              size={{
-                xs: 12,
-                sm: 4,
-              }}
-            >
-              <Box
-                sx={{
-                  p: 2.5,
-                  borderRadius: 2,
-                  bgcolor: "action.hover",
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                >
-                  Enrollments
-                </Typography>
-
-                <Typography
-                  variant="h5"
-                  fontWeight={800}
-                  sx={{ mt: 0.5 }}
-                >
-                  {stats.totalEnrollments}
-                </Typography>
-              </Box>
-            </Grid>
-
-          </Grid>
-        </CardContent>
-      </Card>
-
     </Box>
   );
+}
+
+function Dashboard() {
+  const role = localStorage.getItem("role");
+
+  if (role === "STUDENT") {
+    return <StudentDashboard />;
+  }
+
+  if (role === "TEACHER") {
+    return <TeacherDashboard />;
+  }
+
+  return <AdminDashboard />;
 }
 
 export default Dashboard;

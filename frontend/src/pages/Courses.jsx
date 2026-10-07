@@ -22,7 +22,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = "/api";
 
 function Courses() {
   const [courses, setCourses] = useState([]);
@@ -31,7 +31,8 @@ function Courses() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const [editingCourse, setEditingCourse] = useState(null);
+  const [editingCourse, setEditingCourse] =
+    useState(null);
 
   const [formData, setFormData] = useState({
     courseCode: "",
@@ -47,6 +48,20 @@ function Courses() {
     severity: "success",
   });
 
+  // --------------------------------------------------
+  // Authentication / Role
+  // --------------------------------------------------
+
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
+  const isAdmin = role === "ADMIN";
+
+  const authHeaders = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
   const showMessage = (
     message,
     severity = "success"
@@ -58,16 +73,19 @@ function Courses() {
     });
   };
 
-  // -----------------------------
+  // --------------------------------------------------
   // Load courses
-  // -----------------------------
+  // --------------------------------------------------
 
   const fetchCourses = async () => {
     try {
       setLoading(true);
 
       const response = await fetch(
-        `${API_URL}/courses`
+        `${API_URL}/courses`,
+        {
+          headers: authHeaders,
+        }
       );
 
       if (!response.ok) {
@@ -93,9 +111,9 @@ function Courses() {
     fetchCourses();
   }, []);
 
-  // -----------------------------
+  // --------------------------------------------------
   // Open Add Dialog
-  // -----------------------------
+  // --------------------------------------------------
 
   const handleAdd = () => {
     setEditingCourse(null);
@@ -109,9 +127,9 @@ function Courses() {
     setDialogOpen(true);
   };
 
-  // -----------------------------
+  // --------------------------------------------------
   // Open Edit Dialog
-  // -----------------------------
+  // --------------------------------------------------
 
   const handleEdit = (course) => {
     setEditingCourse(course);
@@ -125,9 +143,9 @@ function Courses() {
     setDialogOpen(true);
   };
 
-  // -----------------------------
+  // --------------------------------------------------
   // Form change
-  // -----------------------------
+  // --------------------------------------------------
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -138,11 +156,19 @@ function Courses() {
     }));
   };
 
-  // -----------------------------
+  // --------------------------------------------------
   // Save Course
-  // -----------------------------
+  // --------------------------------------------------
 
   const handleSave = async () => {
+    if (!isAdmin) {
+      showMessage(
+        "Only administrators can manage courses",
+        "error"
+      );
+      return;
+    }
+
     if (!formData.courseCode.trim()) {
       showMessage(
         "Course code is required",
@@ -174,12 +200,8 @@ function Courses() {
       setSaving(true);
 
       const courseData = {
-        courseCode:
-          formData.courseCode.trim(),
-
-        courseName:
-          formData.courseName.trim(),
-
+        courseCode: formData.courseCode.trim(),
+        courseName: formData.courseName.trim(),
         credits: Number(formData.credits),
       };
 
@@ -193,14 +215,13 @@ function Courses() {
 
       const response = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: authHeaders,
         body: JSON.stringify(courseData),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
+        const errorText =
+          await response.text();
 
         throw new Error(
           errorText ||
@@ -234,11 +255,19 @@ function Courses() {
     }
   };
 
-  // -----------------------------
+  // --------------------------------------------------
   // Delete Course
-  // -----------------------------
+  // --------------------------------------------------
 
   const handleDelete = async (course) => {
+    if (!isAdmin) {
+      showMessage(
+        "Only administrators can delete courses",
+        "error"
+      );
+      return;
+    }
+
     const confirmed = window.confirm(
       `Are you sure you want to delete ${course.courseCode}?`
     );
@@ -252,6 +281,7 @@ function Courses() {
         `${API_URL}/courses/${course.id}`,
         {
           method: "DELETE",
+          headers: authHeaders,
         }
       );
 
@@ -281,6 +311,10 @@ function Courses() {
     }
   };
 
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
+
   return (
     <Box>
       {/* Header */}
@@ -299,25 +333,37 @@ function Courses() {
             Courses
           </Typography>
 
-          <Typography
-            color="text.secondary"
-          >
-            Manage courses available to students.
+          <Typography color="text.secondary">
+            {isAdmin
+              ? "Manage courses available to students."
+              : "View courses available to students."}
           </Typography>
         </Box>
 
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleAdd}
-        >
-          Add Course
-        </Button>
+        {/* Admin only */}
+
+        {isAdmin && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAdd}
+            sx={{
+              textTransform: "none",
+              borderRadius: 2,
+            }}
+          >
+            Add Course
+          </Button>
+        )}
       </Box>
 
       {/* Course List */}
 
-      <Card sx={{ borderRadius: 3 }}>
+      <Card
+        sx={{
+          borderRadius: 3,
+        }}
+      >
         <CardContent>
           {loading ? (
             <Box
@@ -338,8 +384,9 @@ function Courses() {
               <Box
                 sx={{
                   display: "grid",
-                  gridTemplateColumns:
-                    "1fr 2fr 1fr 120px",
+                  gridTemplateColumns: isAdmin
+                    ? "1fr 2fr 1fr 120px"
+                    : "1fr 2fr 1fr",
                   gap: 2,
                   px: 2,
                   py: 1.5,
@@ -360,9 +407,11 @@ function Courses() {
                   Credits
                 </Typography>
 
-                <Typography fontWeight="bold">
-                  Actions
-                </Typography>
+                {isAdmin && (
+                  <Typography fontWeight="bold">
+                    Actions
+                  </Typography>
+                )}
               </Box>
 
               {/* Rows */}
@@ -372,15 +421,15 @@ function Courses() {
                   key={course.id}
                   sx={{
                     display: "grid",
-                    gridTemplateColumns:
-                      "1fr 2fr 1fr 120px",
+                    gridTemplateColumns: isAdmin
+                      ? "1fr 2fr 1fr 120px"
+                      : "1fr 2fr 1fr",
                     gap: 2,
                     alignItems: "center",
                     px: 2,
                     py: 1.5,
                     border: "1px solid",
-                    borderColor:
-                      "divider",
+                    borderColor: "divider",
                     borderRadius: 2,
                   }}
                 >
@@ -396,25 +445,29 @@ function Courses() {
                     {course.credits}
                   </Typography>
 
-                  <Box>
-                    <IconButton
-                      color="primary"
-                      onClick={() =>
-                        handleEdit(course)
-                      }
-                    >
-                      <EditIcon />
-                    </IconButton>
+                  {/* Admin actions */}
 
-                    <IconButton
-                      color="error"
-                      onClick={() =>
-                        handleDelete(course)
-                      }
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
+                  {isAdmin && (
+                    <Box>
+                      <IconButton
+                        color="primary"
+                        onClick={() =>
+                          handleEdit(course)
+                        }
+                      >
+                        <EditIcon />
+                      </IconButton>
+
+                      <IconButton
+                        color="error"
+                        onClick={() =>
+                          handleDelete(course)
+                        }
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  )}
                 </Box>
               ))}
             </Stack>
@@ -481,6 +534,9 @@ function Courses() {
             onClick={() =>
               setDialogOpen(false)
             }
+            sx={{
+              textTransform: "none",
+            }}
           >
             Cancel
           </Button>
@@ -489,6 +545,9 @@ function Courses() {
             variant="contained"
             onClick={handleSave}
             disabled={saving}
+            sx={{
+              textTransform: "none",
+            }}
           >
             {saving
               ? "Saving..."

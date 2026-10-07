@@ -22,7 +22,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import SaveIcon from "@mui/icons-material/Save";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = "/api";
 
 function Attendance() {
   const today = new Date();
@@ -52,6 +52,13 @@ function Attendance() {
     severity: "success",
   });
 
+  const token = localStorage.getItem("token");
+
+  const authHeaders = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
   const showMessage = (message, severity = "success") => {
     setSnackbar({
       open: true,
@@ -68,7 +75,9 @@ function Attendance() {
     try {
       setLoadingCourses(true);
 
-      const response = await fetch(`${API_URL}/courses`);
+      const response = await fetch(`${API_URL}/courses`, {
+        headers: authHeaders,
+      });
 
       if (!response.ok) {
         throw new Error("Failed to load courses");
@@ -100,14 +109,21 @@ function Attendance() {
 
       const year = currentMonth.getFullYear();
 
-      const month = String(currentMonth.getMonth() + 1).padStart(2, "0");
+      const month = String(
+        currentMonth.getMonth() + 1
+      ).padStart(2, "0");
 
       const response = await fetch(
-        `${API_URL}/courses/${selectedCourse}/attendance/history?month=${year}-${month}`
+        `${API_URL}/courses/${selectedCourse}/attendance/history?month=${year}-${month}`,
+        {
+          headers: authHeaders,
+        }
       );
 
       if (!response.ok) {
-        throw new Error("Failed to load attendance history");
+        throw new Error(
+          "Failed to load attendance history"
+        );
       }
 
       const data = await response.json();
@@ -115,8 +131,13 @@ function Attendance() {
       setAttendanceHistory(data);
     } catch (error) {
       console.error(error);
+
       setAttendanceHistory({});
-      showMessage("Failed to load attendance history", "error");
+
+      showMessage(
+        "Failed to load attendance history",
+        "error"
+      );
     } finally {
       setLoadingHistory(false);
     }
@@ -136,7 +157,10 @@ function Attendance() {
       setLoadingStudents(true);
 
       const response = await fetch(
-        `${API_URL}/courses/${selectedCourse}/attendance?date=${selectedDate}`
+        `${API_URL}/courses/${selectedCourse}/attendance?date=${selectedDate}`,
+        {
+          headers: authHeaders,
+        }
       );
 
       if (!response.ok) {
@@ -153,8 +177,13 @@ function Attendance() {
       );
     } catch (error) {
       console.error(error);
+
       setStudents([]);
-      showMessage("Failed to load attendance", "error");
+
+      showMessage(
+        "Failed to load attendance",
+        "error"
+      );
     } finally {
       setLoadingStudents(false);
     }
@@ -202,12 +231,10 @@ function Attendance() {
 
     const days = [];
 
-    // Empty cells before first day
     for (let i = 0; i < startingDay; i++) {
       days.push(null);
     }
 
-    // Actual days
     for (let day = 1; day <= totalDays; day++) {
       days.push(new Date(year, month, day));
     }
@@ -218,9 +245,13 @@ function Attendance() {
   const formatDate = (date) => {
     const year = date.getFullYear();
 
-    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const month = String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
 
-    const day = String(date.getDate()).padStart(2, "0");
+    const day = String(
+      date.getDate()
+    ).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
   };
@@ -228,7 +259,10 @@ function Attendance() {
   const isToday = (date) => {
     if (!date) return false;
 
-    return formatDate(date) === today.toISOString().split("T")[0];
+    return (
+      formatDate(date) ===
+      today.toISOString().split("T")[0]
+    );
   };
 
   const isSelected = (date) => {
@@ -242,7 +276,9 @@ function Attendance() {
 
     const dateString = formatDate(date);
 
-    return attendanceHistory[dateString] !== undefined;
+    return (
+      attendanceHistory[dateString] !== undefined
+    );
   };
 
   // --------------------------------------------------
@@ -283,7 +319,10 @@ function Attendance() {
   // Status change
   // --------------------------------------------------
 
-  const handleStatusChange = (studentId, status) => {
+  const handleStatusChange = (
+    studentId,
+    status
+  ) => {
     setStudents((previousStudents) =>
       previousStudents.map((student) =>
         student.studentId === studentId
@@ -302,12 +341,18 @@ function Attendance() {
 
   const handleSaveAttendance = async () => {
     if (!selectedCourse) {
-      showMessage("Please select a course", "error");
+      showMessage(
+        "Please select a course",
+        "error"
+      );
       return;
     }
 
     if (!selectedDate) {
-      showMessage("Please select a date", "error");
+      showMessage(
+        "Please select a date",
+        "error"
+      );
       return;
     }
 
@@ -334,22 +379,24 @@ function Attendance() {
         `${API_URL}/courses/${selectedCourse}/attendance`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: authHeaders,
           body: JSON.stringify(requestBody),
         }
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
+        const errorText =
+          await response.text();
 
         throw new Error(
-          errorText || "Failed to save attendance"
+          errorText ||
+            "Failed to save attendance"
         );
       }
 
-      showMessage("Attendance saved successfully");
+      showMessage(
+        "Attendance saved successfully"
+      );
 
       await fetchAttendanceHistory();
       await fetchAttendance();
@@ -357,7 +404,8 @@ function Attendance() {
       console.error(error);
 
       showMessage(
-        error.message || "Failed to save attendance",
+        error.message ||
+          "Failed to save attendance",
         "error"
       );
     } finally {
@@ -369,10 +417,14 @@ function Attendance() {
   // Month title
   // --------------------------------------------------
 
-  const monthTitle = currentMonth.toLocaleString("default", {
-    month: "long",
-    year: "numeric",
-  });
+  const monthTitle =
+    currentMonth.toLocaleString(
+      "default",
+      {
+        month: "long",
+        year: "numeric",
+      }
+    );
 
   // --------------------------------------------------
   // UI
@@ -383,30 +435,46 @@ function Attendance() {
       {/* Header */}
 
       <Box mb={3}>
-        <Typography variant="h4" fontWeight="bold" mb={1}>
+        <Typography
+          variant="h4"
+          fontWeight="bold"
+          mb={1}
+        >
           Attendance
         </Typography>
 
         <Typography color="text.secondary">
-          Select a course and manage daily student attendance.
+          Select a course and manage daily
+          student attendance.
         </Typography>
       </Box>
 
       {/* Course */}
 
-      <Card sx={{ borderRadius: 3, mb: 3 }}>
+      <Card
+        sx={{
+          borderRadius: 3,
+          mb: 3,
+        }}
+      >
         <CardContent>
           <FormControl
             fullWidth
-            sx={{ maxWidth: 500 }}
+            sx={{
+              maxWidth: 500,
+            }}
           >
-            <InputLabel>Select Course</InputLabel>
+            <InputLabel>
+              Select Course
+            </InputLabel>
 
             <Select
               value={selectedCourse}
               label="Select Course"
               onChange={(event) => {
-                setSelectedCourse(event.target.value);
+                setSelectedCourse(
+                  event.target.value
+                );
               }}
               disabled={loadingCourses}
             >
@@ -415,7 +483,8 @@ function Attendance() {
                   key={course.id}
                   value={course.id}
                 >
-                  {course.courseCode} - {course.courseName}
+                  {course.courseCode} -{" "}
+                  {course.courseName}
                 </MenuItem>
               ))}
             </Select>
@@ -426,17 +495,22 @@ function Attendance() {
       {/* Calendar */}
 
       {selectedCourse && (
-        <Card sx={{ borderRadius: 3, mb: 3 }}>
+        <Card
+          sx={{
+            borderRadius: 3,
+            mb: 3,
+          }}
+        >
           <CardContent>
-            {/* Calendar header */}
-
             <Box
               display="flex"
               justifyContent="space-between"
               alignItems="center"
               mb={3}
             >
-              <IconButton onClick={goToPreviousMonth}>
+              <IconButton
+                onClick={goToPreviousMonth}
+              >
                 <ChevronLeftIcon />
               </IconButton>
 
@@ -458,7 +532,9 @@ function Attendance() {
                 )}
               </Box>
 
-              <IconButton onClick={goToNextMonth}>
+              <IconButton
+                onClick={goToNextMonth}
+              >
                 <ChevronRightIcon />
               </IconButton>
             </Box>
@@ -509,100 +585,106 @@ function Attendance() {
                 gap: 1,
               }}
             >
-              {calendarDays.map((date, index) => {
-                if (!date) {
-                  return (
-                    <Box
-                      key={`empty-${index}`}
-                      sx={{ minHeight: 70 }}
-                    />
-                  );
-                }
-
-                const dateString =
-                  formatDate(date);
-
-                const marked =
-                  hasAttendance(date);
-
-                const selected =
-                  isSelected(date);
-
-                return (
-                  <Box
-                    key={dateString}
-                    onClick={() =>
-                      handleDateClick(date)
-                    }
-                    sx={{
-                      minHeight: 70,
-                      border: "1px solid",
-                      borderColor: selected
-                        ? "primary.main"
-                        : "divider",
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      position: "relative",
-
-                      bgcolor: selected
-                        ? "primary.main"
-                        : "background.paper",
-
-                      color: selected
-                        ? "primary.contrastText"
-                        : "text.primary",
-
-                      "&:hover": {
-                        bgcolor: selected
-                          ? "primary.dark"
-                          : "action.hover",
-                      },
-                    }}
-                  >
-                    <Typography
-                      fontWeight={
-                        isToday(date)
-                          ? "bold"
-                          : "normal"
-                      }
-                    >
-                      {date.getDate()}
-                    </Typography>
-
-                    {marked && (
+              {calendarDays.map(
+                (date, index) => {
+                  if (!date) {
+                    return (
                       <Box
+                        key={`empty-${index}`}
                         sx={{
-                          width: 7,
-                          height: 7,
-                          borderRadius: "50%",
-                          bgcolor: selected
-                            ? "white"
-                            : "success.main",
-                          mt: 0.5,
+                          minHeight: 70,
                         }}
                       />
-                    )}
+                    );
+                  }
 
-                    {marked && (
+                  const dateString =
+                    formatDate(date);
+
+                  const marked =
+                    hasAttendance(date);
+
+                  const selected =
+                    isSelected(date);
+
+                  return (
+                    <Box
+                      key={dateString}
+                      onClick={() =>
+                        handleDateClick(date)
+                      }
+                      sx={{
+                        minHeight: 70,
+                        border: "1px solid",
+                        borderColor: selected
+                          ? "primary.main"
+                          : "divider",
+                        borderRadius: 2,
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection:
+                          "column",
+                        alignItems: "center",
+                        justifyContent:
+                          "center",
+                        position: "relative",
+                        bgcolor: selected
+                          ? "primary.main"
+                          : "background.paper",
+                        color: selected
+                          ? "primary.contrastText"
+                          : "text.primary",
+                        "&:hover": {
+                          bgcolor: selected
+                            ? "primary.dark"
+                            : "action.hover",
+                        },
+                      }}
+                    >
                       <Typography
-                        variant="caption"
-                        sx={{
-                          fontSize: 10,
-                          opacity: 0.8,
-                        }}
+                        fontWeight={
+                          isToday(date)
+                            ? "bold"
+                            : "normal"
+                        }
                       >
-                        {attendanceHistory[
-                          dateString
-                        ]} records
+                        {date.getDate()}
                       </Typography>
-                    )}
-                  </Box>
-                );
-              })}
+
+                      {marked && (
+                        <Box
+                          sx={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: "50%",
+                            bgcolor: selected
+                              ? "white"
+                              : "success.main",
+                            mt: 0.5,
+                          }}
+                        />
+                      )}
+
+                      {marked && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontSize: 10,
+                            opacity: 0.8,
+                          }}
+                        >
+                          {
+                            attendanceHistory[
+                              dateString
+                            ]
+                          }{" "}
+                          records
+                        </Typography>
+                      )}
+                    </Box>
+                  );
+                }
+              )}
             </Box>
 
             {/* Legend */}
@@ -612,6 +694,7 @@ function Attendance() {
               gap={3}
               mt={3}
               justifyContent="center"
+              flexWrap="wrap"
             >
               <Box
                 display="flex"
@@ -623,7 +706,8 @@ function Attendance() {
                     width: 8,
                     height: 8,
                     borderRadius: "50%",
-                    bgcolor: "success.main",
+                    bgcolor:
+                      "success.main",
                   }}
                 />
 
@@ -649,7 +733,8 @@ function Attendance() {
                   variant="body2"
                   color="text.secondary"
                 >
-                  Selected date: {selectedDate}
+                  Selected date:{" "}
+                  {selectedDate}
                 </Typography>
               </Box>
             </Box>
@@ -660,7 +745,11 @@ function Attendance() {
       {/* Students */}
 
       {selectedCourse && (
-        <Card sx={{ borderRadius: 3 }}>
+        <Card
+          sx={{
+            borderRadius: 3,
+          }}
+        >
           <CardContent>
             <Box
               display="flex"
@@ -695,8 +784,8 @@ function Attendance() {
               </Box>
             ) : students.length === 0 ? (
               <Alert severity="info">
-                No students are enrolled in this
-                course.
+                No students are enrolled in
+                this course.
               </Alert>
             ) : (
               <>
@@ -728,64 +817,76 @@ function Attendance() {
                 {/* Students */}
 
                 <Stack spacing={1}>
-                  {students.map((student) => (
-                    <Box
-                      key={student.studentId}
-                      sx={{
-                        display: "grid",
-                        gridTemplateColumns:
-                          "1fr 220px",
-                        gap: 2,
-                        alignItems: "center",
-                        px: 2,
-                        py: 1.5,
-                        border: "1px solid",
-                        borderColor:
-                          "divider",
-                        borderRadius: 2,
-                      }}
-                    >
-                      <Box>
-                        <Typography fontWeight="bold">
-                          {student.studentName}
-                        </Typography>
-
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                        >
-                          Student ID:{" "}
-                          {student.studentId}
-                        </Typography>
-                      </Box>
-
-                      <FormControl
-                        fullWidth
-                        size="small"
+                  {students.map(
+                    (student) => (
+                      <Box
+                        key={
+                          student.studentId
+                        }
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "1fr 220px",
+                          gap: 2,
+                          alignItems:
+                            "center",
+                          px: 2,
+                          py: 1.5,
+                          border: "1px solid",
+                          borderColor:
+                            "divider",
+                          borderRadius: 2,
+                        }}
                       >
-                        <Select
-                          value={
-                            student.status ||
-                            "PRESENT"
-                          }
-                          onChange={(event) =>
-                            handleStatusChange(
-                              student.studentId,
-                              event.target.value
-                            )
-                          }
-                        >
-                          <MenuItem value="PRESENT">
-                            Present
-                          </MenuItem>
+                        <Box>
+                          <Typography fontWeight="bold">
+                            {
+                              student.studentName
+                            }
+                          </Typography>
 
-                          <MenuItem value="ABSENT">
-                            Absent
-                          </MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Box>
-                  ))}
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                          >
+                            Student ID:{" "}
+                            {
+                              student.studentId
+                            }
+                          </Typography>
+                        </Box>
+
+                        <FormControl
+                          fullWidth
+                          size="small"
+                        >
+                          <Select
+                            value={
+                              student.status ||
+                              "PRESENT"
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              handleStatusChange(
+                                student.studentId,
+                                event.target
+                                  .value
+                              )
+                            }
+                          >
+                            <MenuItem value="PRESENT">
+                              Present
+                            </MenuItem>
+
+                            <MenuItem value="ABSENT">
+                              Absent
+                            </MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    )
+                  )}
                 </Stack>
 
                 {/* Save */}
@@ -798,7 +899,9 @@ function Attendance() {
                   <Button
                     variant="contained"
                     size="large"
-                    startIcon={<SaveIcon />}
+                    startIcon={
+                      <SaveIcon />
+                    }
                     onClick={
                       handleSaveAttendance
                     }

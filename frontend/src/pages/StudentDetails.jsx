@@ -29,19 +29,23 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = "/api";
 
 function StudentDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [student, setStudent] = useState(null);
-  const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [enrolledCourses, setEnrolledCourses] =
+    useState([]);
   const [allCourses, setAllCourses] = useState([]);
   const [attendance, setAttendance] = useState({});
 
-  const [selectedCourse, setSelectedCourse] = useState("");
-  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedCourse, setSelectedCourse] =
+    useState("");
+
+  const [openDialog, setOpenDialog] =
+    useState(false);
 
   const [loading, setLoading] = useState(true);
 
@@ -51,8 +55,24 @@ function StudentDetails() {
     severity: "success",
   });
 
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
+  const isAdmin = role === "ADMIN";
+
+  const authHeaders = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  // --------------------------------------------------
   // Show message
-  const showMessage = (message, severity = "success") => {
+  // --------------------------------------------------
+
+  const showMessage = (
+    message,
+    severity = "success"
+  ) => {
     setSnackbar({
       open: true,
       message,
@@ -60,15 +80,23 @@ function StudentDetails() {
     });
   };
 
+  // --------------------------------------------------
   // Load student
+  // --------------------------------------------------
+
   const fetchStudent = async () => {
     try {
       const response = await fetch(
-        `${API_URL}/students/${id}`
+        `${API_URL}/students/${id}`,
+        {
+          headers: authHeaders,
+        }
       );
 
       if (!response.ok) {
-        throw new Error("Failed to load student");
+        throw new Error(
+          "Failed to load student"
+        );
       }
 
       const data = await response.json();
@@ -84,45 +112,60 @@ function StudentDetails() {
     }
   };
 
+  // --------------------------------------------------
   // Load enrolled courses
-  const fetchEnrolledCourses = async () => {
+  // --------------------------------------------------
+
+  const fetchEnrolledCourses =
+    async () => {
+      try {
+        const response = await fetch(
+          `${API_URL}/students/${id}/courses`,
+          {
+            headers: authHeaders,
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "Failed to load enrolled courses"
+          );
+        }
+
+        const data = await response.json();
+
+        setEnrolledCourses(data);
+
+        return data;
+      } catch (error) {
+        console.error(error);
+
+        showMessage(
+          "Failed to load enrolled courses",
+          "error"
+        );
+
+        return [];
+      }
+    };
+
+  // --------------------------------------------------
+  // Load all courses
+  // --------------------------------------------------
+
+  const fetchAllCourses = async () => {
     try {
       const response = await fetch(
-        `${API_URL}/students/${id}/courses`
+        `${API_URL}/courses`,
+        {
+          headers: authHeaders,
+        }
       );
 
       if (!response.ok) {
         throw new Error(
-          "Failed to load enrolled courses"
+          "Failed to load courses"
         );
-      }
-
-      const data = await response.json();
-
-      setEnrolledCourses(data);
-
-      return data;
-    } catch (error) {
-      console.error(error);
-
-      showMessage(
-        "Failed to load enrolled courses",
-        "error"
-      );
-
-      return [];
-    }
-  };
-
-  // Load all courses
-  const fetchAllCourses = async () => {
-    try {
-      const response = await fetch(
-        `${API_URL}/courses`
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to load courses");
       }
 
       const data = await response.json();
@@ -138,20 +181,30 @@ function StudentDetails() {
     }
   };
 
+  // --------------------------------------------------
   // Load attendance
-  const fetchAttendance = async (courses) => {
+  // --------------------------------------------------
+
+  const fetchAttendance = async (
+    courses
+  ) => {
     const attendanceData = {};
 
     for (const course of courses) {
       try {
         const response = await fetch(
-          `${API_URL}/students/${id}/attendance?courseId=${course.id}`
+          `${API_URL}/students/${id}/attendance?courseId=${course.id}`,
+          {
+            headers: authHeaders,
+          }
         );
 
         if (response.ok) {
-          const data = await response.json();
+          const data =
+            await response.json();
 
-          attendanceData[course.id] = data;
+          attendanceData[course.id] =
+            data;
         }
       } catch (error) {
         console.error(
@@ -164,7 +217,10 @@ function StudentDetails() {
     setAttendance(attendanceData);
   };
 
+  // --------------------------------------------------
   // Initial page loading
+  // --------------------------------------------------
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -184,8 +240,19 @@ function StudentDetails() {
     loadData();
   }, [id]);
 
+  // --------------------------------------------------
   // Add course
+  // --------------------------------------------------
+
   const handleAddCourse = async () => {
+    if (!isAdmin) {
+      showMessage(
+        "Only administrators can manage student enrollment",
+        "error"
+      );
+      return;
+    }
+
     if (!selectedCourse) {
       showMessage(
         "Please select a course",
@@ -200,21 +267,26 @@ function StudentDetails() {
         `${API_URL}/students/${id}/courses/${selectedCourse}`,
         {
           method: "POST",
+          headers: authHeaders,
         }
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
+        const errorText =
+          await response.text();
 
         throw new Error(
-          errorText || "Failed to add course"
+          errorText ||
+            "Failed to add course"
         );
       }
 
       const updatedCourses =
         await fetchEnrolledCourses();
 
-      await fetchAttendance(updatedCourses);
+      await fetchAttendance(
+        updatedCourses
+      );
 
       setSelectedCourse("");
 
@@ -234,10 +306,21 @@ function StudentDetails() {
     }
   };
 
+  // --------------------------------------------------
   // Remove course
+  // --------------------------------------------------
+
   const handleRemoveCourse = async (
     courseId
   ) => {
+    if (!isAdmin) {
+      showMessage(
+        "Only administrators can manage student enrollment",
+        "error"
+      );
+      return;
+    }
+
     const confirmed = window.confirm(
       "Are you sure you want to remove this course?"
     );
@@ -251,19 +334,26 @@ function StudentDetails() {
         `${API_URL}/students/${id}/courses/${courseId}`,
         {
           method: "DELETE",
+          headers: authHeaders,
         }
       );
 
       if (!response.ok) {
+        const errorText =
+          await response.text();
+
         throw new Error(
-          "Failed to remove course"
+          errorText ||
+            "Failed to remove course"
         );
       }
 
       const updatedCourses =
         await fetchEnrolledCourses();
 
-      await fetchAttendance(updatedCourses);
+      await fetchAttendance(
+        updatedCourses
+      );
 
       showMessage(
         "Course removed successfully"
@@ -272,13 +362,17 @@ function StudentDetails() {
       console.error(error);
 
       showMessage(
-        "Failed to remove course",
+        error.message ||
+          "Failed to remove course",
         "error"
       );
     }
   };
 
-  // Courses that student is not enrolled in
+  // --------------------------------------------------
+  // Courses student is not enrolled in
+  // --------------------------------------------------
+
   const availableCourses =
     allCourses.filter(
       (course) =>
@@ -289,7 +383,10 @@ function StudentDetails() {
         )
     );
 
+  // --------------------------------------------------
   // Loading screen
+  // --------------------------------------------------
+
   if (loading) {
     return (
       <Box
@@ -303,7 +400,10 @@ function StudentDetails() {
     );
   }
 
+  // --------------------------------------------------
   // Student not found
+  // --------------------------------------------------
+
   if (!student) {
     return (
       <Box>
@@ -314,6 +414,10 @@ function StudentDetails() {
     );
   }
 
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
+
   return (
     <Box>
       {/* Back button */}
@@ -321,7 +425,10 @@ function StudentDetails() {
       <Button
         startIcon={<ArrowBackIcon />}
         onClick={() => navigate("/students")}
-        sx={{ mb: 2 }}
+        sx={{
+          mb: 2,
+          textTransform: "none",
+        }}
       >
         Back to Students
       </Button>
@@ -410,23 +517,33 @@ function StudentDetails() {
               </Typography>
             </Box>
 
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() =>
-                setOpenDialog(true)
-              }
-              disabled={
-                availableCourses.length === 0
-              }
-            >
-              Add Course
-            </Button>
+            {/* Admin only */}
+
+            {isAdmin && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() =>
+                  setOpenDialog(true)
+                }
+                disabled={
+                  availableCourses.length ===
+                  0
+                }
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                }}
+              >
+                Add Course
+              </Button>
+            )}
           </Box>
 
           <Divider sx={{ mb: 2 }} />
 
-          {enrolledCourses.length === 0 ? (
+          {enrolledCourses.length ===
+          0 ? (
             <Typography color="text.secondary">
               This student is not enrolled
               in any course.
@@ -471,16 +588,20 @@ function StudentDetails() {
                       </Typography>
                     </Box>
 
-                    <IconButton
-                      color="error"
-                      onClick={() =>
-                        handleRemoveCourse(
-                          course.id
-                        )
-                      }
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    {/* Admin only */}
+
+                    {isAdmin && (
+                      <IconButton
+                        color="error"
+                        onClick={() =>
+                          handleRemoveCourse(
+                            course.id
+                          )
+                        }
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    )}
                   </Box>
                 )
               )}
@@ -514,7 +635,8 @@ function StudentDetails() {
             daily attendance records.
           </Typography>
 
-          {enrolledCourses.length === 0 ? (
+          {enrolledCourses.length ===
+          0 ? (
             <Typography color="text.secondary">
               No attendance available.
             </Typography>
@@ -523,10 +645,13 @@ function StudentDetails() {
               {enrolledCourses.map(
                 (course) => {
                   const summary =
-                    attendance[course.id];
+                    attendance[
+                      course.id
+                    ];
 
                   const percentage =
-                    summary?.percentage ?? 0;
+                    summary?.percentage ??
+                    0;
 
                   return (
                     <Box key={course.id}>
@@ -539,9 +664,13 @@ function StudentDetails() {
                           <Typography
                             fontWeight="bold"
                           >
-                            {course.courseCode}{" "}
+                            {
+                              course.courseCode
+                            }{" "}
                             -{" "}
-                            {course.courseName}
+                            {
+                              course.courseName
+                            }
                           </Typography>
 
                           <Typography
@@ -595,68 +724,78 @@ function StudentDetails() {
 
       {/* Add Course Dialog */}
 
-      <Dialog
-        open={openDialog}
-        onClose={() =>
-          setOpenDialog(false)
-        }
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>
-          Add Course
-        </DialogTitle>
-
-        <DialogContent>
-          <FormControl
-            fullWidth
-            sx={{ mt: 1 }}
-          >
-            <InputLabel>
-              Course
-            </InputLabel>
-
-            <Select
-              value={selectedCourse}
-              label="Course"
-              onChange={(event) =>
-                setSelectedCourse(
-                  event.target.value
-                )
-              }
-            >
-              {availableCourses.map(
-                (course) => (
-                  <MenuItem
-                    key={course.id}
-                    value={course.id}
-                  >
-                    {course.courseCode} -{" "}
-                    {course.courseName}
-                  </MenuItem>
-                )
-              )}
-            </Select>
-          </FormControl>
-        </DialogContent>
-
-        <DialogActions>
-          <Button
-            onClick={() =>
-              setOpenDialog(false)
-            }
-          >
-            Cancel
-          </Button>
-
-          <Button
-            variant="contained"
-            onClick={handleAddCourse}
-          >
+      {isAdmin && (
+        <Dialog
+          open={openDialog}
+          onClose={() =>
+            setOpenDialog(false)
+          }
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>
             Add Course
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </DialogTitle>
+
+          <DialogContent>
+            <FormControl
+              fullWidth
+              sx={{ mt: 1 }}
+            >
+              <InputLabel>
+                Course
+              </InputLabel>
+
+              <Select
+                value={selectedCourse}
+                label="Course"
+                onChange={(event) =>
+                  setSelectedCourse(
+                    event.target.value
+                  )
+                }
+              >
+                {availableCourses.map(
+                  (course) => (
+                    <MenuItem
+                      key={course.id}
+                      value={course.id}
+                    >
+                      {course.courseCode} -{" "}
+                      {course.courseName}
+                    </MenuItem>
+                  )
+                )}
+              </Select>
+            </FormControl>
+          </DialogContent>
+
+          <DialogActions>
+            <Button
+              onClick={() =>
+                setOpenDialog(false)
+              }
+              sx={{
+                textTransform: "none",
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="contained"
+              onClick={
+                handleAddCourse
+              }
+              sx={{
+                textTransform: "none",
+              }}
+            >
+              Add Course
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {/* Snackbar */}
 

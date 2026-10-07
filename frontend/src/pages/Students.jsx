@@ -37,7 +37,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = "/api";
 
 const emptyStudent = {
   name: "",
@@ -49,6 +49,16 @@ const emptyStudent = {
 
 function Students() {
   const navigate = useNavigate();
+
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
+  const isAdmin = role === "ADMIN";
+
+  const authHeaders = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
 
   // =========================================================
   // Student data
@@ -78,7 +88,8 @@ function Students() {
   // =========================================================
 
   const [search, setSearch] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] =
+    useState("");
   const [yearFilter, setYearFilter] = useState("");
 
   const [departments, setDepartments] = useState([]);
@@ -88,8 +99,10 @@ function Students() {
   // =========================================================
 
   const [openDialog, setOpenDialog] = useState(false);
-  const [editingStudent, setEditingStudent] = useState(null);
-  const [formData, setFormData] = useState(emptyStudent);
+  const [editingStudent, setEditingStudent] =
+    useState(null);
+  const [formData, setFormData] =
+    useState(emptyStudent);
 
   // =========================================================
   // Snackbar
@@ -130,7 +143,10 @@ function Students() {
       params.append("direction", direction);
 
       if (search.trim()) {
-        params.append("search", search.trim());
+        params.append(
+          "search",
+          search.trim()
+        );
       }
 
       if (departmentFilter) {
@@ -145,7 +161,10 @@ function Students() {
       }
 
       const response = await fetch(
-        `${API_URL}/students/page?${params.toString()}`
+        `${API_URL}/students/page?${params.toString()}`,
+        {
+          headers: authHeaders,
+        }
       );
 
       if (!response.ok) {
@@ -158,7 +177,9 @@ function Students() {
 
       setStudents(data.content || []);
       setTotalPages(data.totalPages || 0);
-      setTotalElements(data.totalElements || 0);
+      setTotalElements(
+        data.totalElements || 0
+      );
     } catch (error) {
       console.error(error);
 
@@ -192,7 +213,10 @@ function Students() {
   const fetchDepartments = async () => {
     try {
       const response = await fetch(
-        `${API_URL}/students`
+        `${API_URL}/students`,
+        {
+          headers: authHeaders,
+        }
       );
 
       if (!response.ok) {
@@ -257,7 +281,9 @@ function Students() {
   // Department filter
   // =========================================================
 
-  const handleDepartmentChange = (event) => {
+  const handleDepartmentChange = (
+    event
+  ) => {
     setDepartmentFilter(
       event.target.value
     );
@@ -314,6 +340,14 @@ function Students() {
   // =========================================================
 
   const handleAddStudent = () => {
+    if (!isAdmin) {
+      showMessage(
+        "Only administrators can add students",
+        "error"
+      );
+      return;
+    }
+
     setEditingStudent(null);
 
     setFormData({
@@ -330,14 +364,21 @@ function Students() {
   const handleEditStudent = (
     student
   ) => {
+    if (!isAdmin) {
+      showMessage(
+        "Only administrators can edit students",
+        "error"
+      );
+      return;
+    }
+
     setEditingStudent(student);
 
     setFormData({
       name: student.name,
       email: student.email,
       phone: student.phone || "",
-      department:
-        student.department,
+      department: student.department,
       year: student.year,
     });
 
@@ -365,6 +406,14 @@ function Students() {
   // =========================================================
 
   const handleSubmit = async () => {
+    if (!isAdmin) {
+      showMessage(
+        "Only administrators can manage students",
+        "error"
+      );
+      return;
+    }
+
     if (
       !formData.name.trim() ||
       !formData.email.trim() ||
@@ -379,9 +428,7 @@ function Students() {
       return;
     }
 
-    const year = Number(
-      formData.year
-    );
+    const year = Number(formData.year);
 
     if (year < 1 || year > 4) {
       showMessage(
@@ -409,10 +456,7 @@ function Students() {
           `${API_URL}/students/${editingStudent.id}`,
           {
             method: "PUT",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+            headers: authHeaders,
             body: JSON.stringify(
               studentData
             ),
@@ -423,10 +467,7 @@ function Students() {
           `${API_URL}/students`,
           {
             method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+            headers: authHeaders,
             body: JSON.stringify(
               studentData
             ),
@@ -479,6 +520,14 @@ function Students() {
   // =========================================================
 
   const handleDelete = async (id) => {
+    if (!isAdmin) {
+      showMessage(
+        "Only administrators can delete students",
+        "error"
+      );
+      return;
+    }
+
     const confirmed =
       window.confirm(
         "Are you sure you want to delete this student?"
@@ -493,6 +542,7 @@ function Students() {
         `${API_URL}/students/${id}`,
         {
           method: "DELETE",
+          headers: authHeaders,
         }
       );
 
@@ -519,6 +569,7 @@ function Students() {
        * If deleting the last student
        * on the current page, move back.
        */
+
       if (
         students.length === 1 &&
         page > 0
@@ -586,20 +637,22 @@ function Students() {
           </Typography>
         </Box>
 
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={
-            handleAddStudent
-          }
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 600,
-          }}
-        >
-          Add Student
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={
+              handleAddStudent
+            }
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 600,
+            }}
+          >
+            Add Student
+          </Button>
+        )}
       </Box>
 
       {/* =====================================================
@@ -615,7 +668,6 @@ function Students() {
         }}
       >
         <CardContent sx={{ p: 2.5 }}>
-
           <Stack
             direction={{
               xs: "column",
@@ -623,7 +675,6 @@ function Students() {
             }}
             spacing={2}
           >
-
             {/* Search */}
 
             <TextField
@@ -641,20 +692,19 @@ function Students() {
                   </InputAdornment>
                 ),
 
-                endAdornment:
-                  search ? (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          setSearch("");
-                          setPage(0);
-                        }}
-                      >
-                        <ClearIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  ) : null,
+                endAdornment: search ? (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setSearch("");
+                        setPage(0);
+                      }}
+                    >
+                      <ClearIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
               }}
             />
 
@@ -760,7 +810,6 @@ function Students() {
             >
               Clear
             </Button>
-
           </Stack>
 
           {/* Result information */}
@@ -796,7 +845,6 @@ function Students() {
               </Typography>
             )}
           </Box>
-
         </CardContent>
       </Card>
 
@@ -813,14 +861,12 @@ function Students() {
         }}
       >
         <CardContent sx={{ p: 0 }}>
-
           <Box
             sx={{
               overflowX: "auto",
             }}
           >
             <Table>
-
               <TableHead>
                 <TableRow
                   sx={{
@@ -828,7 +874,6 @@ function Students() {
                       "action.hover",
                   }}
                 >
-
                   {/* ID */}
 
                   <TableCell>
@@ -944,13 +989,12 @@ function Students() {
                       Actions
                     </strong>
                   </TableCell>
-
                 </TableRow>
               </TableHead>
 
               <TableBody>
-
-                {students.length === 0 ? (
+                {students.length ===
+                0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={7}
@@ -960,7 +1004,6 @@ function Students() {
                       }}
                     >
                       <Box>
-
                         <SearchIcon
                           sx={{
                             fontSize: 42,
@@ -1002,7 +1045,6 @@ function Students() {
                             Clear filters
                           </Button>
                         )}
-
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -1015,7 +1057,6 @@ function Students() {
                         }
                         hover
                       >
-
                         <TableCell>
                           {student.id}
                         </TableCell>
@@ -1064,43 +1105,41 @@ function Students() {
                             <VisibilityIcon />
                           </IconButton>
 
-                          {/* Edit */}
+                          {/* Admin actions */}
 
-                          <IconButton
-                            color="primary"
-                            onClick={() =>
-                              handleEditStudent(
-                                student
-                              )
-                            }
-                            title="Edit student"
-                          >
-                            <EditIcon />
-                          </IconButton>
+                          {isAdmin && (
+                            <>
+                              <IconButton
+                                color="primary"
+                                onClick={() =>
+                                  handleEditStudent(
+                                    student
+                                  )
+                                }
+                                title="Edit student"
+                              >
+                                <EditIcon />
+                              </IconButton>
 
-                          {/* Delete */}
-
-                          <IconButton
-                            color="error"
-                            onClick={() =>
-                              handleDelete(
-                                student.id
-                              )
-                            }
-                            title="Delete student"
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-
+                              <IconButton
+                                color="error"
+                                onClick={() =>
+                                  handleDelete(
+                                    student.id
+                                  )
+                                }
+                                title="Delete student"
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </>
+                          )}
                         </TableCell>
-
                       </TableRow>
                     )
                   )
                 )}
-
               </TableBody>
-
             </Table>
           </Box>
 
@@ -1120,7 +1159,6 @@ function Students() {
               borderTop="1px solid"
               borderColor="divider"
             >
-
               {/* Rows per page */}
 
               <Box
@@ -1192,10 +1230,8 @@ function Students() {
                 showFirstButton
                 showLastButton
               />
-
             </Box>
           )}
-
         </CardContent>
       </Card>
 
@@ -1203,125 +1239,127 @@ function Students() {
           ADD / EDIT DIALOG
       ====================================================== */}
 
-      <Dialog
-        open={openDialog}
-        onClose={() =>
-          setOpenDialog(false)
-        }
-        fullWidth
-        maxWidth="sm"
-      >
-
-        <DialogTitle>
-          {editingStudent
-            ? "Edit Student"
-            : "Add Student"}
-        </DialogTitle>
-
-        <DialogContent>
-
-          <Stack spacing={2} mt={1}>
-
-            <TextField
-              label="Name"
-              name="name"
-              value={
-                formData.name
-              }
-              onChange={
-                handleChange
-              }
-              fullWidth
-              required
-            />
-
-            <TextField
-              label="Email"
-              name="email"
-              type="email"
-              value={
-                formData.email
-              }
-              onChange={
-                handleChange
-              }
-              fullWidth
-              required
-            />
-
-            <TextField
-              label="Phone"
-              name="phone"
-              value={
-                formData.phone
-              }
-              onChange={
-                handleChange
-              }
-              fullWidth
-            />
-
-            <TextField
-              label="Department"
-              name="department"
-              value={
-                formData.department
-              }
-              onChange={
-                handleChange
-              }
-              fullWidth
-              required
-            />
-
-            <TextField
-              label="Year"
-              name="year"
-              type="number"
-              value={
-                formData.year
-              }
-              onChange={
-                handleChange
-              }
-              slotProps={{
-                htmlInput: {
-                  min: 1,
-                  max: 4,
-                },
-              }}
-              fullWidth
-              required
-            />
-
-          </Stack>
-
-        </DialogContent>
-
-        <DialogActions>
-
-          <Button
-            onClick={() =>
-              setOpenDialog(false)
-            }
-          >
-            Cancel
-          </Button>
-
-          <Button
-            variant="contained"
-            onClick={
-              handleSubmit
-            }
-          >
+      {isAdmin && (
+        <Dialog
+          open={openDialog}
+          onClose={() =>
+            setOpenDialog(false)
+          }
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>
             {editingStudent
-              ? "Update"
+              ? "Edit Student"
               : "Add Student"}
-          </Button>
+          </DialogTitle>
 
-        </DialogActions>
+          <DialogContent>
+            <Stack spacing={2} mt={1}>
+              <TextField
+                label="Name"
+                name="name"
+                value={
+                  formData.name
+                }
+                onChange={
+                  handleChange
+                }
+                fullWidth
+                required
+              />
 
-      </Dialog>
+              <TextField
+                label="Email"
+                name="email"
+                type="email"
+                value={
+                  formData.email
+                }
+                onChange={
+                  handleChange
+                }
+                fullWidth
+                required
+              />
+
+              <TextField
+                label="Phone"
+                name="phone"
+                value={
+                  formData.phone
+                }
+                onChange={
+                  handleChange
+                }
+                fullWidth
+              />
+
+              <TextField
+                label="Department"
+                name="department"
+                value={
+                  formData.department
+                }
+                onChange={
+                  handleChange
+                }
+                fullWidth
+                required
+              />
+
+              <TextField
+                label="Year"
+                name="year"
+                type="number"
+                value={
+                  formData.year
+                }
+                onChange={
+                  handleChange
+                }
+                slotProps={{
+                  htmlInput: {
+                    min: 1,
+                    max: 4,
+                  },
+                }}
+                fullWidth
+                required
+              />
+            </Stack>
+          </DialogContent>
+
+          <DialogActions>
+            <Button
+              onClick={() =>
+                setOpenDialog(false)
+              }
+              sx={{
+                textTransform:
+                  "none",
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="contained"
+              onClick={
+                handleSubmit
+              }
+              sx={{
+                textTransform:
+                  "none",
+              }}
+            >
+              {editingStudent
+                ? "Update"
+                : "Add Student"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {/* =====================================================
           SNACKBAR
@@ -1348,7 +1386,6 @@ function Students() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-
     </Box>
   );
 }
